@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# DVC
+/data/raw/*
+/data/processed/*
+/data/embeddings/*
+!/data/raw/.gitkeep
+!/data/processed/.gitkeep
+!/data/embeddings/.gitkeep
+
+# Qdrant local storage
+qdrant_storage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage

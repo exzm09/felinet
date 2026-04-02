@@ -1,0 +1,108 @@
+# FeliNet Data Source Catalog
+# Each source has: name, base URL(s), content type, estimated size, and notes on scraping approach. This file is the single source of truth for what data feeds into the FeliNet corpus.
+
+sources:
+  cornell_feline_health:
+    name: "Cornell Feline Health Center"
+    base_url: "https://www.vet.cornell.edu/departments-centers-and-institutes/cornell-feline-health-center"
+    content_types:
+      - disease
+      - nutrition
+      - behavior
+    estimated_articles: 100
+    scraping_method: "beautifulsoup + trafilatura"
+    notes: >
+      High-quality, vet-reviewed articles on feline diseases, nutrition, and
+      behavior. HTML is clean and well-structured. Primary source for health
+      content. Respect robots.txt and add 1-2s delay between requests.
+    license: "Educational/fair use - cite source in all responses"
+
+  wikipedia_cat_breeds:
+    name: "Wikipedia Cat Breeds"
+    base_url: "https://en.wikipedia.org/wiki/List_of_cat_breeds"
+    content_types:
+      - breed_profile
+    estimated_articles: 70
+    scraping_method: "beautifulsoup + trafilatura"
+    notes: >
+      Breed pages include origin, temperament, appearance, health issues,
+      and care needs. Parse the breed list page first to get individual
+      breed URLs. Wikipedia content is CC BY-SA licensed.
+    license: "CC BY-SA 3.0"
+
+  cfa_breed_profiles:
+    name: "Cat Fanciers' Association Breed Profiles"
+    base_url: "https://cfa.org/breeds/"
+    content_types:
+      - breed_profile
+    estimated_articles: 45
+    scraping_method: "beautifulsoup + trafilatura"
+    notes: >
+      Official CFA breed descriptions including breed standards, personality, and care information. Shorter but more authoritative than Wikipedia for breed-specific details.
+    license: "Check robots.txt - cite source"
+
+  tica_breed_profiles:
+    name: "The International Cat Association Breed Profiles"
+    base_url: "https://tica.org/breeds/browse-all-breeds"
+    content_types:
+      - breed_profile
+    estimated_articles: 73
+    scraping_method: "beautifulsoup + trafilatura"
+    notes: >
+      TICA recognizes more breeds than CFA. Good for complementing CFA data.
+      Pages may use JavaScript rendering - check if trafilatura handles it,
+      otherwise fall back to requests + BS4.
+    license: "Check robots.txt - cite source"
+
+  aspca_toxicology:
+    name: "ASPCA Animal Poison Control - Toxic Plants"
+    base_url: "https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    content_types:
+      - toxicology
+    estimated_articles: 700
+    scraping_method: "beautifulsoup - paginated list + detail pages"
+    notes: >
+      Covers 700+ plants with toxicity level, clinical signs, and species
+      affected. Filter for cat-specific entries. Each plant has a detail
+      page with scientific name, family, and symptoms.
+    license: "Educational/fair use - cite source"
+
+  merck_vet_manual:
+    name: "Merck Veterinary Manual"
+    base_url: "https://www.merckvetmanual.com"
+    content_types:
+      - disease
+      - nutrition
+    estimated_articles: 200
+    scraping_method: "crawl4ai or trafilatura"
+    notes: >
+      Comprehensive veterinary reference. Feline sections cover diseases,
+      diagnostics, treatment. More clinical depth than Cornell.
+      Consider using Crawl4AI for better handling of complex page layouts.
+    license: "Free access - check terms for scraping"
+
+  petfinder_api:
+    name: "Petfinder API"
+    base_url: "https://api.petfinder.com/v2"
+    content_types:
+      - breed_profile
+    estimated_articles: null
+    scraping_method: "REST API client (OAuth2)"
+    notes: >
+      250K+ adoptable animals with photos, descriptions, breed, age, size.
+      Requires API key (free). Used for the adoption matching feature
+      in later phases. Rate limited to 1000 requests/day.
+    license: "API terms of service - free tier"
+
+  thecatapi:
+    name: "TheCatAPI"
+    base_url: "https://api.thecatapi.com/v1"
+    content_types:
+      - breed_profile
+    estimated_articles: 67
+    scraping_method: "REST API client"
+    notes: >
+      67 breeds with images, temperament scores, and metadata. Good for
+      image classification training data in later phases. Free tier
+      allows 10K requests/month.
+    license: "Free API key"

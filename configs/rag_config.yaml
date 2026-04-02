@@ -1,0 +1,35 @@
+# FeliNet RAG Pipeline Configuration
+
+chunking:
+  chunk_size: 512         # tokens - consensus best default
+  chunk_overlap: 50       # tokens - ~10% overlap
+  separators:
+    - "\n\n"
+    - "\n"
+    - ". "
+    - " "
+    - ""
+
+retriveal:
+  top_k_initial: 30       # Candidates from hybrid search
+  top_kreranked: 5        # Final chunks after cross-encoder reranking
+  bm25_weight: 0.5        # Equal weright BM25 dense - tune later with evaluation metrics
+  dense_weight: 0.5
+  use_reranker: true
+  reranker_model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+generation:
+  model_name: "llama-3.3-70b-versatile"   # Groq free tier
+  temperature: 0.1                        # Low temperature for factual Q&A
+  max_tokens: 1024
+  system_prompt: >
+    You are FeliNet, a feline health and breed knowledge assistant.
+    Answer questions about cats using ONLY the provided context.
+    Cite your sources by referencing the source name and title.
+    If the context does not contain enough information to answer
+    the question, say so clearly - do not guess or hallucinate.
+    If a question suggests a medical emergency, advise the user
+    to contact a veterinarian immediately.
+
+embedding_model: "all-MiniLM-L6-v2"       # Baseline - will be fine-tuned
+collection_name: "felinet_chunks"

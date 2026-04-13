@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field, field_validator
 # Custom data types that restrict values to a fixed set.
 class DataSource(str, Enum):
     """Known data sources in the FeliNet corpus."""
-    CORNELL = "cornel_feline_health"
+    CORNELL = "cornell_feline_health"
     WIKIPEDIA = "wikipedia_cat_breeds"
     CFA = "cfa_breed_profiles"
     ASPCA = "aspca_toxicology"

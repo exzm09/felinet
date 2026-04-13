@@ -58,7 +58,7 @@ pytest tests/
 ## Current status
 
 - [x] **Week 1**: Project scaffold, schemas, DVC, MLflow
-- [ ] Week 2: Data ingestion pipeline
+- [x] Week 2: Data ingestion pipeline
 - [ ] Week 3: ETL with Prefect + data quality
 - [ ] Week 4: Chunking + vector store
 - [ ] Week 5: End-to-end naive RAG

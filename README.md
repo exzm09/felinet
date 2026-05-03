@@ -59,8 +59,8 @@ pytest tests/
 
 - [x] **Week 1**: Project scaffold, schemas, DVC, MLflow
 - [x] Week 2: Data ingestion pipeline
-- [ ] Week 3: ETL with Prefect + data quality
-- [ ] Week 4: Chunking + vector store
+- [x] Week 3: ETL with Prefect + data quality
+- [x] Week 4: Chunking + vector store
 - [ ] Week 5: End-to-end naive RAG
 - [ ] Week 6: Evaluation framework
 - [ ] Week 7: Hybrid search

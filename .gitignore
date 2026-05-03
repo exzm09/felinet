@@ -48,3 +48,5 @@ Thumbs.db
 htmlcov/
 .coverage
 /data
+
+qdrant_storage/

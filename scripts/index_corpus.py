@@ -1,5 +1,5 @@
 """
-Index the FeliNet corpus: load -> chunk -> embed -> upsert to Qdrant.
+Index the FeliNet corpus: load -> chunk -> embed -> upsert.
 """
 import sys
 import time

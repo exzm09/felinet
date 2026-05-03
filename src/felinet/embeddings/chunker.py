@@ -20,7 +20,8 @@ from felinet.schemas import (
 
 logger = logging.getLogger(__name__)
 
-# Use the cl100k base tokenizer as a proxy for token counting. all-MinLM uses a difference tokenizer (BERT WordPiece), but the counts are close enough for sizing decicions.
+# Use the cl100k base tokenizer as a proxy for token counting. 
+# all-MinLM uses a difference tokenizer (BERT WordPiece), but the counts are close enough for sizing decicions.
 _ENCODER = tiktoken.get_encoding("cl100k_base")
 
 def count_tokens(text: str) -> int:

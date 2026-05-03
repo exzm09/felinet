@@ -50,7 +50,7 @@ def main():
             "token_count_mean": sum(token_counts) / len(token_counts)
         })
 
-        # Retrieval quality observations (from test)
+        # Retrieval quality observations (from baseline test)
         mlflow.log_metrics({
             "manual_kidney_top1_score": 0.7281,
             "manual_leukemia_top1_score": 0.5805,

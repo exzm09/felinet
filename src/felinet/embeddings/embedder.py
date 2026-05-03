@@ -61,7 +61,7 @@ def embed_chunks(
 
     logger.info(f"Embedding {len(texts)} chunks with {model_name} (batch size = {batch_size})...")
 
-    # .encode() return a numpy array of shape (n_chunks, embedding_dim)
+    # .encode() returns a numpy array of shape (n_chunks, embedding_dim)
     embeddings = model.encode(
         texts,
         batch_size=batch_size,

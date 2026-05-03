@@ -1,4 +1,6 @@
-"""Quick visual sanity check on the chunker output."""
+"""
+Quick visual sanity check on the chunker output.
+"""
 from felinet.embeddings.chunker import chunk_corpus
 from felinet.data.loader import load_corpus
 

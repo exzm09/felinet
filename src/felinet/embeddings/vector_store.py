@@ -56,7 +56,7 @@ def create_collection(
         except Exception:
             pass    # collection did not exist
 
-        # Check if collection already exists
+        # Check if the collection already exists
         collections = [c.name for c in client.get_collections().collections]
         if collection_name in collections:
             logger.info(f"Collection {collection_name} already exists, skipping creation")

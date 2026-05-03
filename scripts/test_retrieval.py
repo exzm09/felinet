@@ -10,7 +10,6 @@ from felinet.embeddings.embedder import load_embedding_model
 from felinet.embeddings.vector_store import get_client, search
 
 # Test queries
-
 TEST_QUERIES = [
     "What causes kidney disease in cats?",
     "What are the symptoms of feline leukemia?",

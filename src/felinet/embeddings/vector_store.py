@@ -93,7 +93,7 @@ def upsert_chunks(
         Number of points upserted.
     """
     # Filter out any chunks without embeddings (defensive)
-    embedded = [c for c in chunks if c.embedding if not None]
+    embedded = [c for c in chunks if c.embedding is not None]
     if len(embedded) < len(chunks):
         logger.warning(f"{len(chunks) - len(embedded)} chunks skipped (no embedding)")
 

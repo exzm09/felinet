@@ -10,8 +10,9 @@ import logging
 import os
 import time
 
+import requests as http_requests
+
 from dotenv import load_dotenv
-from groq import Groq
 from langfuse.decorators import langfuse_context, observe
 from sentence_transformers import SentenceTransformer
 
@@ -121,6 +122,9 @@ def generate_answer(
 ) -> str:
     """
     Send the user's question + retrieved context to the LLM and get an answer back.
+    Uses requests library to call Groq's OpenAI-compatible API directly,
+    because the groq Python client has connectivity issues on some setups.
+
      Parameters
     ----------
     query : str
@@ -130,7 +134,9 @@ def generate_answer(
     config : RAGConfig
         Pipeline config (model name, temperature, etc.).
     """
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise ValueError("GROQ_API_KEY not set in .env file")
 
     # Build the message list.
     messages = [
@@ -154,22 +160,40 @@ def generate_answer(
         model=config.generation.model_name
     )
 
-    response = client.chat.completions.create(
-        model=config.generation.model_name,
-        messages=messages,
-        temperature=config.generation.temperature,
-        max_tokens=config.generation.max_tokens
+    # Call Groq API directly via requests
+    response = http_requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": "Bearer " + api_key,
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": config.generation.model_name,
+            "messages": messages,
+            "temperature": config.generation.temperature,
+            "max_tokens": config.generation.max_tokens,
+        },
+        timeout=60,  # 60 second timeout for long answers
     )
-    answer = response.choices[0].message.content
+
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Groq API error {response.status_code}: {response.text}"
+        )
+
+    data = response.json()
+    answer = data["choices"][0]["message"]["content"]
 
     # Log token usage to Langfuse
+    usage = data.get("usage", {})
     langfuse_context.update_current_observation(
         output=answer,
         usage={
-            "input": response.usage.prompt_tokens,
-            "output": response.usage.completion_tokens
-        }
+            "input": usage.get("prompt_tokens", 0),
+            "output": usage.get("completion_tokens", 0),
+        },
     )
+
     return answer
 
 # Component 5: The full pipeline

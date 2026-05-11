@@ -8,7 +8,7 @@ Test on:
 4. Does Langfuse capture the trace?
 """
 import logging
-
+import time
 from felinet.embeddings.embedder import load_embedding_model
 from felinet.rag.pipeline import query_rag
 from felinet.schemas import RAGConfig
@@ -61,19 +61,22 @@ def main():
             print(f"   Trace ID:    {response.trace_id}")
 
         except Exception as e:
+            import traceback
             print(f"   ERROR: {e}")
+            traceback.print_exc()
+        time.sleep(10)
 
     print("\n" + "=" * 70)
-    print("Smoke test complete! Check Langfuse for traces.")
+    print("Smoke test complete!")
     print("=" * 70)
 
     # Flush Langfuse to make sure all traces are sent
-    try:
+    """try:
         from langfuse import Langfuse
         Langfuse().flush()
         print("Langfuse traces flushed successfully.")
     except Exception:
-        pass
+        pass"""
 
 
 if __name__ == "__main__":

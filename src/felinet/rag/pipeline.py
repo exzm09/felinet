@@ -1,7 +1,7 @@
 """
 FeliNet RAG pipeline.
 
-Connects retrieval (Qdrant) -> context formatting -> generation (Groq) with Langfuse observability
+Connects retrieval (Qdrant) -> context formatting -> generation (Groq) with with optional Langfuse observability on every step.
 
 Single-stage retrieval + direct generation.
 """
@@ -13,7 +13,6 @@ import time
 import requests as http_requests
 
 from dotenv import load_dotenv
-from langfuse.decorators import langfuse_context, observe
 from sentence_transformers import SentenceTransformer
 
 from felinet.embeddings.vector_store import get_client, search
@@ -28,6 +27,34 @@ from felinet.schemas import (
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+
+# Optional Langfuse integration
+# If Langfuse is disables or can not connect, use a no-op decorator so the pipeline runs identically just without tracing.
+_LANGFUSE_AVAILABLE = False
+if os.getenv("LANGFUSE_ENABLED", "true").lower() != "false":
+    try:
+        from langfuse.decorators import langfuse_context, observe
+        _LANGFUSE_AVAILABLE = True
+        logger.info("Langfuse observability enabled")
+    except Exception as e:
+        logger.warning(f"Langfuse not available: {e}")
+if not _LANGFUSE_AVAILABLE:
+    # No-op decorator: @observe() does nothing
+    def observe(*args, **kwargs):
+        def decorator(fn):
+            return fn
+        # Handle both @observe and @observe()
+        if args and callable(args[0]):
+            return args[0]
+        return decorator
+    
+    class _DummyContext:
+        def get_current_trace_id(self):
+            return None
+        def update_current_observation(self, **kwargs):
+            pass
+    langfuse_context = _DummyContext()
+    logger.info("Langfuse disabled - running without observability")
 
 # Component 1: Embed the user's query
 @observe()  # Langfuse traces automatically
@@ -65,11 +92,15 @@ def retrieve_chunks(
     """
     client = get_client(url=qdrant_url)
     # For now use dense-only search
+    # For naice RAG (no reranker), use top_k_reranked(5) instead of 30
+    top_k = config.retrieval.top_k_initial if not config.retrieval.use_reranker else config.retrieval.top_k_initial
+    # Override to 5 for now
+    top_k = config.retrieval.top_k_reranked
     raw_results = search(
         client=client,
         query_vector=query_vector,
         collection_name=config.collection_name,
-        top_k=config.retrieval.top_k_initial
+        top_k=top_k
     )
 
     retrieved = []
@@ -146,12 +177,12 @@ def generate_answer(
         },
         {
             "role": "user",
-            "content": {
-                f"Context: \n{context}\n\n",
-                f"Question: {query}\n\n",
+            "content": (
+                f"Context: \n{context}\n\n"
+                f"Question: {query}\n\n"
                 "Answer the question using ONLY the context above. "
                 "Cite sources by thier number (e.g., [1], [2])."
-            }
+            )
         }
     ]
     # Update Langfuse with I/O for this generation
@@ -168,10 +199,10 @@ def generate_answer(
             "Content-Type": "application/json",
         },
         json={
-            "model": config.generation.model_name,
+            "model": str(config.generation.model_name),
             "messages": messages,
-            "temperature": config.generation.temperature,
-            "max_tokens": config.generation.max_tokens,
+            "temperature": float(config.generation.temperature),
+            "max_tokens": int(config.generation.max_tokens),
         },
         timeout=60,  # 60 second timeout for long answers
     )

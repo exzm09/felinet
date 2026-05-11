@@ -61,7 +61,7 @@ pytest tests/
 - [x] Week 2: Data ingestion pipeline
 - [x] Week 3: ETL with Prefect + data quality
 - [x] Week 4: Chunking + vector store
-- [ ] Week 5: End-to-end naive RAG
+- [x] Week 5: End-to-end naive RAG
 - [ ] Week 6: Evaluation framework
 - [ ] Week 7: Hybrid search
 - [ ] Week 8: Reranking + context engineering

@@ -16,20 +16,20 @@ FeliNet is an open-source RAG system built over a curated corpus of veterinary a
 
 ```
 felinet/
-├── src/felinet/          # Source code
-│   ├── data/             # Ingestion, scraping, ETL
-│   ├── rag/              # Retrieval, reranking, generation
-│   ├── embeddings/       # Fine-tuning, evaluation
-│   ├── api/              # FastAPI endpoints
-│   ├── evaluation/       # DeepEval / RAGAS test suites
-│   ├── mlops/            # Drift detection, monitoring
-│   └── schemas.py        # Pydantic data models
-├── tests/                # Unit and integration tests
-├── configs/              # YAML configuration files
-├── data/                 # DVC-tracked data (not in git)
-├── notebooks/            # Exploration and analysis
-├── scripts/              # One-off setup scripts
-└── docs/                 # Architecture docs and ADRs
+-- src/felinet/          # Source code
+|   -- data/             # Ingestion, scraping, ETL
+|   --  rag/              # Retrieval, reranking, generation
+|   --  embeddings/       # Fine-tuning, evaluation
+|   --  api/              # FastAPI endpoints
+|   - evaluation/       # DeepEval / RAGAS test suites
+|   --  mlops/            # Drift detection, monitoring
+|   --  schemas.py        # Pydantic data models
+|-- tests/                # Unit and integration tests
+|-- configs/              # YAML configuration files
+|-- data/                 # DVC-tracked data (not in git)
+|-- notebooks/            # Exploration and analysis
+|-- scripts/              # One-off setup scripts
+|-- docs/                 # Architecture docs and ADRs
 ```
 
 ## Quick start
@@ -62,7 +62,7 @@ pytest tests/
 - [x] Week 3: ETL with Prefect + data quality
 - [x] Week 4: Chunking + vector store
 - [x] Week 5: End-to-end naive RAG
-- [ ] Week 6: Evaluation framework
+- [X] Week 6: Evaluation framework
 - [ ] Week 7: Hybrid search
 - [ ] Week 8: Reranking + context engineering
 - [ ] Week 9: Synthetic training data

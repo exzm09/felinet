@@ -21,7 +21,7 @@ felinet/
 |   --  rag/              # Retrieval, reranking, generation
 |   --  embeddings/       # Fine-tuning, evaluation
 |   --  api/              # FastAPI endpoints
-|   - evaluation/       # DeepEval / RAGAS test suites
+|   -- evaluation/       # DeepEval / RAGAS test suites
 |   --  mlops/            # Drift detection, monitoring
 |   --  schemas.py        # Pydantic data models
 |-- tests/                # Unit and integration tests

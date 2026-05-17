@@ -66,7 +66,7 @@ def embed_query(
     Turn user's question into a vector (same space as stored chunks).
     Must be the SAME model that embedded the corpus
     """
-    vector = model.encode(query, normalize_embeddungs=True)
+    vector = model.encode(query, normalize_embeddings=True)
     return vector.tolist()
 
 # Component 2: Retrieve relevant chunks from Qdrant
@@ -234,7 +234,9 @@ def query_rag(
     query: str,
     config: RAGConfig | None = None,
     embedding_model: SentenceTransformer | None = None,
-    qdrant_url: str = "http://localhost:6333"
+    qdrant_url: str = "http://localhost:6333",
+    retrieval_mode: str = "dense",
+    bm25_index: "BM25Index | None" = None
 ) -> RAGResponse:
     """
     End-to-end RAG: question in -> cited answer out.
@@ -270,7 +272,17 @@ def query_rag(
     query_vector = embed_query(query, embedding_model)
 
     # Step 3: Retrieve relevant chunks
-    retrieved = retrieve_chunks(query_vector, config, qdrant_url)
+    if retrieval_mode == "hybrid" and bm25_index is not None:
+        from felinet.rag.retriever import hybrid_search
+        retrieved = hybrid_search(
+            query=query,
+            query_vector=query_vector,
+            bm25_index=bm25_index,
+            config=config,
+            qdrant_url=qdrant_url
+        )
+    else:
+        retrieved = retrieve_chunks(query_vector, config, qdrant_url)
 
     # Step 4: Format context
     context = format_context(retrieved)

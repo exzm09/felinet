@@ -47,7 +47,7 @@ class BM25Index:
         """
         self.bm25 = bm25
         self.chunk_ids = chunk_ids
-        self.chunk_texts = self.chunk_texts
+        self.chunk_texts = chunk_texts
         self.chunk_metadata = chunk_metadata
 
     @classmethod
@@ -122,7 +122,7 @@ class BM25Index:
         scores = self.bm25.get_scores(tokenized_query)
 
         # Get indices of the top-k highest-scoring chunks
-        top_indices = np.argsort(scores)[::-1][top_k]
+        top_indices = np.argsort(scores)[::-1][:top_k]
 
         results = []
         for idx in top_indices:
@@ -131,7 +131,7 @@ class BM25Index:
 
             results.append({
                 "chunk_id": self.chunk_ids[idx],
-                "content": self.chunk_texts["content"][idx],
+                "content": self.chunk_texts[idx],
                 "source": self.chunk_metadata[idx]["source"],
                 "score": float(scores[idx]),
                 "title": self.chunk_metadata[idx]["title"],

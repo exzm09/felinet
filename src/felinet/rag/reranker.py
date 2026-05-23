@@ -5,7 +5,7 @@ Felinet Reranker - Cross-encoder reranking for retrieval results.
 from __future__ import annotations
 import logging
 import time
-from sentence_transformer import CrossEncoder
+from sentence_transformers import CrossEncoder
 
 from felinet.schemas import RetrievedChunk
 

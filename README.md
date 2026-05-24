@@ -63,8 +63,8 @@ pytest tests/
 - [x] Week 4: Chunking + vector store
 - [x] Week 5: End-to-end naive RAG
 - [X] Week 6: Evaluation framework
-- [ ] Week 7: Hybrid search
-- [ ] Week 8: Reranking + context engineering
+- [X] Week 7: Hybrid search
+- [X] Week 8: Reranking + context engineering
 - [ ] Week 9: Synthetic training data
 - [ ] Week 10: Embedding fine-tuning
 - [ ] Week 11: Guardrails

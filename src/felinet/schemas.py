@@ -92,7 +92,7 @@ class RetrievalConfig(BaseModel):
 
 class GenerationConfig(BaseModel):
     """Configuration for the LLM generation step"""
-    model_name: str = Field("llama-3.3-70b-versatile", description="Groq model identifier")
+    model_name: str = Field("gpt-4o-mini", description="OpenAI model identifier")
     temperature: float = Field(0.1, ge=0.0, le=2.0)
     max_tokens: int = Field(1024, ge=64, le=4096)
     system_prompt: str = Field(

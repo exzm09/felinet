@@ -270,6 +270,7 @@ def hybrid_search(
     top_k_search = config.retrieval.top_k_initial
     top_k_final = config.retrieval.top_k_reranked
 
+
     # Lane 1: Dense search (Qdrant)
     client = get_client(url=qdrant_url)
     dense_results = search(
@@ -293,7 +294,9 @@ def hybrid_search(
     )
 
     # Take top results and convert to RetrievedChunk
-    top_fused = fused[:top_k_final]
+    # If reranker is enabled, return MORE candidates
+    num_to_return = top_k_search if config.retrieval.use_reranker else top_k_final
+    top_fused = fused[:num_to_return]
 
     retrieved = []
     for result in top_fused:

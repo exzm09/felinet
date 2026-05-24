@@ -153,10 +153,8 @@ def generate_answer(
 ) -> str:
     """
     Send the user's question + retrieved context to the LLM and get an answer back.
-    Uses requests library to call Groq's OpenAI-compatible API directly,
-    because the groq Python client has connectivity issues on some setups.
 
-     Parameters
+    Parameters
     ----------
     query : str
         The user's original question.
@@ -165,9 +163,9 @@ def generate_answer(
     config : RAGConfig
         Pipeline config (model name, temperature, etc.).
     """
-    api_key = os.getenv("GROQ_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError("GROQ_API_KEY not set in .env file")
+        raise ValueError("OPENAI_API_KEY not set in .env file")
 
     # Build the message list.
     messages = [
@@ -193,7 +191,7 @@ def generate_answer(
 
     # Call Groq API directly via requests
     response = http_requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
+        "https://api.openai.com/v1/chat/completions",
         headers={
             "Authorization": "Bearer " + api_key,
             "Content-Type": "application/json",
@@ -283,6 +281,16 @@ def query_rag(
         )
     else:
         retrieved = retrieve_chunks(query_vector, config, qdrant_url)
+
+    # Step 3.5: Rerank id enabled
+    if config.retrieval.use_reranker and retrieved:
+        from felinet.rag.reranker import rerank
+        retrieved = rerank(
+            query=query,
+            chunks=retrieved,
+            top_k=config.retrieval.top_k_reranked,
+            model_name=config.retrieval.reranker_model
+        )
 
     # Step 4: Format context
     context = format_context(retrieved)

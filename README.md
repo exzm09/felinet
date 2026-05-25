@@ -57,7 +57,7 @@ pytest tests/
 
 ## Current status
 
-- [x] **Week 1**: Project scaffold, schemas, DVC, MLflow
+- [x] Week 1: Project scaffold, schemas, DVC, MLflow
 - [x] Week 2: Data ingestion pipeline
 - [x] Week 3: ETL with Prefect + data quality
 - [x] Week 4: Chunking + vector store
@@ -65,7 +65,7 @@ pytest tests/
 - [X] Week 6: Evaluation framework
 - [X] Week 7: Hybrid search
 - [X] Week 8: Reranking + context engineering
-- [ ] Week 9: Synthetic training data
+- [X] Week 9: Synthetic training data
 - [ ] Week 10: Embedding fine-tuning
 - [ ] Week 11: Guardrails
 - [ ] Week 12: CI/CD quality gates

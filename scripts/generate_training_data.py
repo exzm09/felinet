@@ -56,9 +56,7 @@ def main():
     print(f"  Estimated time: ~{len(chunk_dicts) * 0.5 / 60:.0f} minutes")
     print()
 
-    gen_config = TrainingDataConfig(
-        questions_per_chunk=args.questions
-    )
+    gen_config = TrainingDataConfig()
 
     start = time.time()
     output_path = run_generation(chunk_dicts, gen_config)
@@ -66,7 +64,7 @@ def main():
 
     # Summary
     if output_path.exists():
-        with open(output_path, "r") as f:
+        with open(output_path, "r", encoding="utf-8") as f:
             total_lines = sum(1 for _ in f)
         print(f"\nTotal training pairs in {output_path}: {total_lines}")
     print(f"Total time: {elapsed / 60:.1f} minutes")

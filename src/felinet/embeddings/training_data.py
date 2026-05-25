@@ -116,7 +116,7 @@ def generate_questions_for_chunk(
         content = content[4:].strip()
 
     try:
-        questions = json.load(content)
+        questions = json.loads(content)
         if isinstance(questions, list):
             return [q for q in questions if isinstance(q, str) and len(q.strip()) > 10]
         return []
@@ -132,7 +132,7 @@ def load_checkpoint(path: str) -> set[str]:
     if path.exists():
         with open(path, "r") as f:
             data = json.load(f)
-        return set(data.get("completed_chunk_ids"), [])
+        return set(data.get("completed_chunk_ids", []))
     return set()
 
 def save_checkpoint(path: str, completed_ids: set[str]) -> None:

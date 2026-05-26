@@ -66,7 +66,7 @@ pytest tests/
 - [X] Week 7: Hybrid search
 - [X] Week 8: Reranking + context engineering
 - [X] Week 9: Synthetic training data
-- [ ] Week 10: Embedding fine-tuning
+- [X] Week 10: Embedding fine-tuning
 - [ ] Week 11: Guardrails
 - [ ] Week 12: CI/CD quality gates
 - [ ] Week 13: Drift detection + monitoring

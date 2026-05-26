@@ -1,0 +1,25 @@
+{
+  "base_model": "all-MiniLM-L6-v2",
+  "fine_tuned_model": "felinet-embedding-v1",
+  "training_pairs": 3782,
+  "validation_pairs": 420,
+  "epochs": 4,
+  "batch_size": 32,
+  "learning_rate": 2e-05,
+  "baseline_metrics": {
+    "felinet-val_cosine_accuracy@1": 0.481,
+    "felinet-val_cosine_accuracy@5": 0.7952,
+    "felinet-val_cosine_accuracy@10": 0.869,
+    "felinet-val_cosine_ndcg@10": 0.6802,
+    "felinet-val_cosine_mrr@10": 0.6192,
+    "felinet-val_cosine_map@10": 0.6192
+  },
+  "finetuned_metrics": {
+    "felinet-val_cosine_accuracy@1": 0.581,
+    "felinet-val_cosine_accuracy@5": 0.9214,
+    "felinet-val_cosine_accuracy@10": 0.9619,
+    "felinet-val_cosine_ndcg@10": 0.7845,
+    "felinet-val_cosine_mrr@10": 0.7261,
+    "felinet-val_cosine_map@10": 0.7261
+  }
+}

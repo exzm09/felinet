@@ -164,7 +164,7 @@ INJECTION_PATTERNS = [
     r"switch\s+to\s+.{0,20}mode",
     r"enter\s+.{0,20}mode",
     # System prompt extraction - trying to see the hidden instructions
-    r"(reveal|show|display|print|output)\s+(your|the|system)\s+(prompt|instructions|rules)",
+    r"(reveal|show|display|print|output)\s+.{0,15}(your|the|system)\s+(prompt|instructions|rules)",
     r"what\s+(are|is)\s+your\s+(system\s+)?prompt",
     r"repeat\s+(your|the)\s+(system\s+)?prompt",
     # Jailbreak attempts

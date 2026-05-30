@@ -1,9 +1,5 @@
 """
 FeliNet RAG pipeline.
-
-Connects retrieval (Qdrant) -> context formatting -> generation (Groq) with with optional Langfuse observability on every step.
-
-Single-stage retrieval + direct generation.
 """
 from __future__ import annotations
 import logging
@@ -21,6 +17,13 @@ from felinet.schemas import (
     RAGResponse,
     RetrievedChunk,
     DataSource
+)
+from felinet.rag.guardrails import (
+    run_input_guardrails,
+    check_retrieval_confidence,
+    run_output_guardrails,
+    FALLBACK_MESSAGES,
+    GuardrailAction,
 )
 
 # Load .env so API keys are available as environment variables
@@ -234,7 +237,8 @@ def query_rag(
     embedding_model: SentenceTransformer | None = None,
     qdrant_url: str = "http://localhost:6333",
     retrieval_mode: str = "dense",
-    bm25_index: "BM25Index | None" = None
+    bm25_index: "BM25Index | None" = None,
+    min_retrieval_score: float = 0.25
 ) -> RAGResponse:
     """
     End-to-end RAG: question in -> cited answer out.
@@ -250,6 +254,8 @@ def query_rag(
         Pre-loaded model. If None, loads it fresh (slower on first call).
     qdrant_url : str
         Qdrant server address.
+    min_retrieval_score : float
+        Minimum retrieval score for the confidence gate (default 0.25).
 
     Returns
     -------
@@ -260,6 +266,37 @@ def query_rag(
     start_time = time.time()
     if config is None:
         config = RAGConfig()
+
+    # Input guardrails
+    input_results = run_input_guardrails(query)
+    for result in input_results:
+        langfuse_context.update_current_observation(
+            metadata={f"guardrail_{result.guardrail_name}": {
+                "action": result.action.value,
+                "reason": result.reason,
+                **result.details,
+            }}
+        )
+        blocked = [r for r in input_results if r.blocked]
+    if blocked:
+        blocker = blocked[0]
+        logger.warning(f"Input guardrail BLOCKED: {blocker.guardrail_name} - {blocker.reason}")
+        fallback_key = {
+            "topic_check": "off_topic",
+            "prompt_injection": "prompt_injection",
+            "pii_filter": "pii_detected",
+        }.get(blocker.guardrail_name, "off_topic")
+
+        latency_ms = (time.time() - start_time) * 1000
+        return RAGResponse(
+            answer=FALLBACK_MESSAGES[fallback_key],
+            retrieved_chunks=[],
+            query=query,
+            model_used="guardrail_fallback",
+            latency_ms=latency_ms,
+            config_snapshot=config,
+            trace_id=langfuse_context.get_current_trace_id(),
+        )
 
     # Step 1: Load embedding model if not provided
     if embedding_model is None:
@@ -292,11 +329,63 @@ def query_rag(
             model_name=config.retrieval.reranker_model
         )
 
+    # Confidence gate
+    confidence_result = check_retrieval_confidence(retrieved, min_score=min_retrieval_score)
+    langfuse_context.update_current_observation(
+        metadata={"guardrail_retrieval_confidence": {
+            "action": confidence_result.action.value,
+            "reason": confidence_result.reason,
+            **confidence_result.details,
+        }}
+    )
+    if confidence_result.blocked:
+        logger.warning(f"Confidence gate BLOCKED: {confidence_result.reason}")
+        latency_ms = (time.time() - start_time) * 1000
+        return RAGResponse(
+            answer=FALLBACK_MESSAGES["low_confidence"],
+            retrieved_chunks=retrieved,
+            query=query,
+            model_used="guardrail_fallback",
+            latency_ms=latency_ms,
+            config_snapshot=config,
+            trace_id=langfuse_context.get_current_trace_id(),
+        )
+    
     # Step 4: Format context
     context = format_context(retrieved)
 
     # Step 5: Generate answer
     answer = generate_answer(query, context, config)
+
+    # Output guardrails
+    output_results = run_output_guardrails(answer, context, retrieved)
+    for result in output_results:
+        langfuse_context.update_current_observation(
+            metadata={f"guardrail_{result.guardrail_name}": {
+                "action": result.action.value,
+                "reason": result.reason,
+                **result.details,
+            }}
+        )
+    blocked_output = [r for r in output_results if r.blocked]
+    if blocked_output:
+        blocker = blocked_output[0]
+        logger.warning(f"Output guardrail BLOCKED: {blocker.guardrail_name} - {blocker.reason}")
+        fallback_key = {
+            "hallucination_check": "hallucination",
+            "response_length": "too_long",
+        }.get(blocker.guardrail_name, "hallucination")
+
+        latency_ms = (time.time() - start_time) * 1000
+        return RAGResponse(
+            answer=FALLBACK_MESSAGES[fallback_key],
+            retrieved_chunks=retrieved,
+            query=query,
+            model_used=config.generation.model_name + " (blocked_by_guardrail)",
+            latency_ms=latency_ms,
+            config_snapshot=config,
+            trace_id=langfuse_context.get_current_trace_id(),
+        )
 
     # Calculate latency
     latency_ms = (time.time() - start_time) * 1000

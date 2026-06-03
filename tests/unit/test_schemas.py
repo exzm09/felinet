@@ -11,27 +11,49 @@ from felinet.schemas import(
     RAGConfig,
     RAGResponse,
     RetrievedChunk,
-    SourceDocument
+    SourceDocument,
+    GenerationConfig
 )
 
 class TestSourceDocument:
-    def test_valid_document(self):
-        doc = SourceDocument(
-            id="cornell_001",
-            source=DataSource.CORNELL,
-            url="https://www.vet.cornell.edu/example",
-            title="Feline Lower Urinary Tract Disease",
-            content="Feline lower urinary tract disease (FLUTD) describes a variety of conditions..." * 5,
-            content_type=ContentType.DISEASE
-        )
+    """
+    Tests for the SourceDocument model (raw docs before chunking)
+    """
+    def test_valid_document(self, sample_source_document):
+        """
+        A well-formed doc should be accepted without errors
+        """
+        doc = sample_source_document
         # Test that Pydantic STORED it correctly
+        assert doc.id == "test_doc_001"
         assert doc.source == DataSource.CORNELL
         assert doc.scraped_at is not None
+        assert doc.content_type == ContentType.DISEASE
+        assert len(doc.content) > 50
+
+    def test_empty_title_rejected(self):
+        """
+        Title must have at least 1 character
+        """
+        with pytest.raises(ValidationError) as exc_info:
+            SourceDocument(
+                id="bad_doc",
+                source=DataSource.CORNELL,
+                url="https://example.com",
+                title="",  # Empty - should fail
+                content="A" * 60,
+                content_type=ContentType.ARTICLE,
+            )
+        # Check that the error is about title length
+        assert "title" in str(exc_info.value).lower()
 
     def test_content_too_short_rejected(self):
+        """
+        Content must be at least 50 characters (catches empty/broken scrapes)
+        """
         with pytest.raises(ValidationError):
             SourceDocument(
-                id="bad",
+                id="bad_doc",
                 source=DataSource.CORNELL,
                 url="https://example.com",
                 title="Short",

@@ -67,7 +67,7 @@ jobs:
       # tests/unit/ = only unit tests (no integration tests that need APIs)
       - name: Run unit tests
         run: |
-          pytest tests/unit/ -v --tb=short
+          pytest tests/unit/ -v --tb=short -p no:deepeval
 
   # Job 2: RAG Quality Gates (manual trigger only - costs money)
   # This job runs DeepEval metrics against the live pipeline.

@@ -1,0 +1,95 @@
+# FeliNet CI Pipeline - GitHub Actions
+#
+# WHAT THIS DOES:
+#   Runs automatically on every push and pull request:
+#   1. Installs Python and project dependencies
+#   2. Runs ruff linter (catches code style issues)
+#   3. Runs all unit tests (schemas, guardrails, chunking)
+#
+# WHAT IT DOES NOT DO (intentionally):
+#   - No Qdrant, no OpenAI API calls, no LLM-as-judge
+#   - Unit tests are free and fast (~30 seconds)
+#   - Integration/eval tests run locally (they cost money)
+
+name: FeliNet CI
+
+# WHEN does this run?
+# "on: push" = every time push code to GitHub
+# "on: pull_request" = every time someone opens a PR
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Job 1: Lint + Unit Tests (runs on every push, free, fast)
+  lint-and-test:
+    runs-on: ubuntu-latest    # GitHub provides a free Linux VM
+
+    steps:
+      # Step 1: Check out the code from the repo
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Step 3: Cache pip packages (so CI doesn't re-download every time)
+      # This saves 2-3 minutes per run after the first time.
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # Step 4: Install dependencies
+      # --no-deps on torch avoids pulling in CUDA (saves ~2GB download)
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      # Step 5: Lint with ruff
+      # ruff checks for code style issues, unused imports, etc.
+      # --select E,F = pycodestyle errors + pyflakes (catches real bugs)
+      - name: Lint with ruff
+        run: |
+          ruff check src/felinet/ tests/ --select E,F --ignore E501
+
+      # Step 6: Run unit tests
+      # -v = verbose (shows each test name)
+      # tests/unit/ = only unit tests (no integration tests that need APIs)
+      - name: Run unit tests
+        run: |
+          pytest tests/unit/ -v --tb=short
+
+  # Job 2: RAG Quality Gates (manual trigger only - costs money)
+  # This job runs DeepEval metrics against the live pipeline.
+  # It requires API keys and costs ~$0.05 per run (LLM-as-judge).
+  # Only runs when manually trigger it from GitHub Actions tab.
+  #
+  # To set up later when DeepEval is integrated:
+  #   1. Add OPENAI_API_KEY to GitHub repo secrets
+  #   2. Uncomment this job
+  #   3. Create tests/integration/test_rag_quality.py with DeepEval tests
+  #
+  # quality-gates:
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'workflow_dispatch'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.12"
+  #     - run: pip install -e ".[dev]"
+  #     - name: Run DeepEval quality gates
+  #       env:
+  #         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  #       run: |
+  #         deepeval test run tests/integration/test_rag_quality.py

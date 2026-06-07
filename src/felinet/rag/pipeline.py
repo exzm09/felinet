@@ -27,7 +27,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Optional Langfuse integration
-# If Langfuse is disables or can not connect, use a no-op decorator so the pipeline runs identically just without tracing.
+# If Langfuse is disabled or can not connect, use a no-op decorator so the pipeline runs identically just without tracing.
 _LANGFUSE_AVAILABLE = False
 if os.getenv("LANGFUSE_ENABLED", "true").lower() != "false":
     try:
@@ -86,13 +86,13 @@ def retrieve_chunks(
     query_vector : list[float]
         The embedded query.
     config : RAGConfig
-        Pipeline config (tcollection name, top_k, etc.).
+        Pipeline config (collection name, top_k, etc.).
     qdrant_url : str
         Where Qdrant is running.
     """
     client = get_client(url=qdrant_url)
     # For now use dense-only search
-    # For naice RAG (no reranker), use top_k_reranked(5) instead of 30
+    # For naive RAG (no reranker), use top_k_reranked(5) instead of 30
     top_k = (
         config.retrieval.top_k_initial
         if not config.retrieval.use_reranker
@@ -153,7 +153,7 @@ def format_context(chunks: list[RetrievedChunk]) -> str:
     return "\n\n".join(sections)
 
 
-# Component 4: Generate an answer via Groq (Llama 3.3 70B)
+# Component 4: Generate an answer via OpenAI (gpt-4o-mini)
 
 
 @observe(as_type="generation")  # tells Langfuse this is an LLM call
@@ -190,7 +190,7 @@ def generate_answer(query: str, context: str, config: RAGConfig) -> str:
     # Update Langfuse with I/O for this generation
     langfuse_context.update_current_observation(input=messages, model=config.generation.model_name)
 
-    # Call Groq API directly via requests
+    # Call OpenAI API directly via requests
     response = http_requests.post(
         "https://api.openai.com/v1/chat/completions",
         headers={
@@ -207,7 +207,7 @@ def generate_answer(query: str, context: str, config: RAGConfig) -> str:
     )
 
     if response.status_code != 200:
-        raise RuntimeError(f"Groq API error {response.status_code}: {response.text}")
+        raise RuntimeError(f"OpenAI API error {response.status_code}: {response.text}")
 
     data = response.json()
     answer = data["choices"][0]["message"]["content"]
@@ -277,7 +277,7 @@ def query_rag(
                 }
             }
         )
-        blocked = [r for r in input_results if r.blocked]
+    blocked = [r for r in input_results if r.blocked]
     if blocked:
         blocker = blocked[0]
         logger.warning(f"Input guardrail BLOCKED: {blocker.guardrail_name} - {blocker.reason}")
@@ -321,7 +321,7 @@ def query_rag(
     else:
         retrieved = retrieve_chunks(query_vector, config, qdrant_url)
 
-    # Step 3.5: Rerank id enabled
+    # Step 3.5: Rerank is enabled
     if config.retrieval.use_reranker and retrieved:
         from felinet.rag.reranker import rerank
 

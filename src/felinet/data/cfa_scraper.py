@@ -178,7 +178,7 @@ def scrape_cfa_breeds(
                 },
             )
             documents.append(doc)
-            logger.info(f"  Finished {name} ({doc.metadata["word_count"]} words)")
+            logger.info(f"  Finished {name} ({doc.metadata['word_count']} words)")
         except Exception as e:
             failed.append({"breed": name, "url": url, "reason": str(e)})
             logger.warning(f"   Validation failed: {e}")

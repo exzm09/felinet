@@ -82,7 +82,7 @@ pytest tests/
 | Vector store | Qdrant |
 | Hybrid search | rank_bm25 + Qdrant dense + RRF |
 | Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 |
-| LLM | Groq (Llama 3.3 70B) |
+| LLM | OenAI (gpt-4o-mini) |
 | API | FastAPI |
 | Frontend | Gradio |
 | Experiment tracking | MLflow |

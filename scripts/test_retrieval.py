@@ -1,10 +1,11 @@
 """
 Test basic retrieval: embed a question, find similar chunks in Qdrant.
 """
+
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent/ "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from felinet.embeddings.embedder import load_embedding_model
 from felinet.embeddings.vector_store import get_client, search
@@ -17,6 +18,7 @@ TEST_QUERIES = [
     "Are lilies toxic to cats?",
     "What is the personality of a Siamese cat?",
 ]
+
 
 def main():
     model = load_embedding_model("all-MiniLM-L6-v2")
@@ -37,6 +39,7 @@ def main():
             print(f"      Source: {hit['source']}")
             print(f"      Title:  {hit['title']}")
             print(f"      Text:   {hit['content'][:200]}...")
+
 
 if __name__ == "__main__":
     main()

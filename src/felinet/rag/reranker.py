@@ -3,8 +3,10 @@ Felinet Reranker - Cross-encoder reranking for retrieval results.
 """
 
 from __future__ import annotations
+
 import logging
 import time
+
 from sentence_transformers import CrossEncoder
 
 from felinet.schemas import RetrievedChunk
@@ -15,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 _reranker_model: CrossEncoder | None = None
 _reranker_mode_name: str | None = None
+
 
 def load_reranker(model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2") -> CrossEncoder:
     """
@@ -41,11 +44,12 @@ def load_reranker(model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2") -> C
 
     return _reranker_model
 
+
 def rerank(
-        query: str,
-        chunks: list[RetrievedChunk],
-        top_k: int = 5,
-        model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    query: str,
+    chunks: list[RetrievedChunk],
+    top_k: int = 5,
+    model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
 ) -> list[RetrievedChunk]:
     """
     Rerank retrieved chunks using a cross-encoder model.
@@ -69,7 +73,7 @@ def rerank(
     """
     if not chunks:
         return []
-    
+
     model = load_reranker(model_name)
 
     # Build (query, chunk_text) pairs for the cross-encoder
@@ -97,10 +101,12 @@ def rerank(
                 source=chunk.source,
                 score=float(ce_score),
                 document_title=chunk.document_title,
-                url=chunk.url
+                url=chunk.url,
             )
         )
-    logger.info(f"Reranking done in {rerank_time:.2f}s | "
-                f"top score: {reranked[0].score:.2f} | "
-                f"kept {len(reranked)}/{len(chunks)} chunks")
+    logger.info(
+        f"Reranking done in {rerank_time:.2f}s | "
+        f"top score: {reranked[0].score:.2f} | "
+        f"kept {len(reranked)}/{len(chunks)} chunks"
+    )
     return reranked

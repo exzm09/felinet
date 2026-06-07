@@ -3,29 +3,27 @@ Guardrails Test Suite.
 Tests the guardrails with normal queries, adversarial inputs, and edge cases.
 The goal: guardrails should catch ≥80% of adversarial inputs while letting legitimate cat questions through.
 """
+
 from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 # Add project root to path so we can import felinet modules
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from felinet.rag.guardrails import (
-    check_topic,
-    check_prompt_injection,
-    check_pii,
-    check_retrieval_confidence,
-    check_hallucination,
-    check_response_length,
-    run_input_guardrails,
-    run_output_guardrails,
     GuardrailAction,
-    FALLBACK_MESSAGES,
+    check_hallucination,
+    check_pii,
+    check_prompt_injection,
+    check_response_length,
+    check_retrieval_confidence,
+    check_topic,
+    run_input_guardrails,
 )
-
 
 # Test cases - organized by guardrail
 
@@ -139,6 +137,7 @@ OUTPUT_TEST_CASES = [
 
 # Test runner
 
+
 def run_test_group(name: str, test_cases, check_fn, get_expected_fn):
     """Run a group of tests and report results."""
     print(f"\n{'=' * 60}")
@@ -168,9 +167,9 @@ def run_test_group(name: str, test_cases, check_fn, get_expected_fn):
     print(f"\n  Results: {passed}/{total} correct ({accuracy:.0f}%)")
     target_met = accuracy >= 80
     if target_met:
-        print(f"  Target ≥80%: MET")
+        print("  Target ≥80%: MET")
     else:
-        print(f"  Target ≥80%: NOT MET")
+        print("  Target ≥80%: NOT MET")
     return passed, total, target_met
 
 
@@ -220,7 +219,7 @@ def main():
 
     # --- Confidence gate ---
     print(f"\n{'=' * 60}")
-    print(f"  RETRIEVAL CONFIDENCE GATE")
+    print("  RETRIEVAL CONFIDENCE GATE")
     print(f"{'=' * 60}")
 
     # Simulate chunks with scores using simple objects
@@ -274,7 +273,7 @@ def main():
 
     # --- Output guardrails ---
     print(f"\n{'=' * 60}")
-    print(f"  OUTPUT GUARDRAILS (hallucination + length)")
+    print("  OUTPUT GUARDRAILS (hallucination + length)")
     print(f"{'=' * 60}")
 
     out_passed = 0
@@ -290,21 +289,23 @@ def main():
             print(f"  [ok] Length check: {name}")
         else:
             print(f"  [FAIL] Length check: {name}")
-            print(f"         Expected {case['expected_length'].value}, got {length_result.action.value}")
+            print(
+                f"         Expected {case['expected_length'].value}, got {length_result.action.value}"
+            )
         out_total += 1
 
         # Hallucination check (only if length passed)
         if case["expected_length"] == GuardrailAction.PASS:
             fake_chunks = [FakeChunk(0.5) for _ in range(case["num_chunks"])]
-            hall_result = check_hallucination(
-                case["answer"], case["context"], fake_chunks
-            )
+            hall_result = check_hallucination(case["answer"], case["context"], fake_chunks)
             if hall_result.action == case["expected_hallucination"]:
                 out_passed += 1
                 print(f"  [ok] Hallucination check: {name}")
             else:
                 print(f"  [FAIL] Hallucination check: {name}")
-                print(f"         Expected {case['expected_hallucination'].value}, got {hall_result.action.value}")
+                print(
+                    f"         Expected {case['expected_hallucination'].value}, got {hall_result.action.value}"
+                )
                 if hall_result.details:
                     print(f"         Details: {hall_result.details}")
             out_total += 1
@@ -316,7 +317,7 @@ def main():
 
     # --- Combined input guardrails ---
     print(f"\n{'=' * 60}")
-    print(f"  COMBINED INPUT GUARDRAILS (end-to-end)")
+    print("  COMBINED INPUT GUARDRAILS (end-to-end)")
     print(f"{'=' * 60}")
 
     combined_cases = [
@@ -355,7 +356,7 @@ def main():
     overall_accuracy = all_passed / all_total * 100
 
     print(f"\n{'=' * 60}")
-    print(f"  FINAL SUMMARY")
+    print("  FINAL SUMMARY")
     print(f"{'=' * 60}")
     print(f"  Total: {all_passed}/{all_total} tests passed ({overall_accuracy:.0f}%)")
     print(f"  Target ≥80%: {'MET' if overall_accuracy >= 80 else 'NOT MET'}")

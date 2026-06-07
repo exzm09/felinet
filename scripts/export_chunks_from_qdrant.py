@@ -1,7 +1,9 @@
 """
 Export chunks from Qdrant to a local JSON file.
 """
+
 from __future__ import annotations
+
 import argparse
 import json
 import logging
@@ -12,11 +14,12 @@ from qdrant_client import QdrantClient
 logging.basicConfig(level=logging.INFO, format="%(name)s | %(message)s")
 logger = logging.getLogger(__name__)
 
+
 def export_chunks(
-        collection_name: str = "felinet_chunks",
-        qdrant_url: str = "http://localhost:6333",
+    collection_name: str = "felinet_chunks",
+    qdrant_url: str = "http://localhost:6333",
     output_path: str = "data/processed/felinet_chunks.json",
-    batch_size: int = 100
+    batch_size: int = 100,
 ) -> int:
     """
     Scroll through all points to Qdrant and save thier payload as JSON.
@@ -42,7 +45,7 @@ def export_chunks(
         print(f"    Collection '{collection_name}' not found in Qdrant.")
         print(f"    Available collections: {collections}")
         return 0
-    
+
     # Get collection info
     info = client.get_collection(collection_name)
     total_points = info.points_count
@@ -57,7 +60,7 @@ def export_chunks(
             limit=batch_size,
             offset=offset,
             with_payload=True,
-            with_vectors=False
+            with_vectors=False,
         )
 
         for point in points:
@@ -71,7 +74,7 @@ def export_chunks(
                 "chunk_index": point.payload.get("chunk_index", 0),
                 "token_count": point.payload.get("token_count", 0),
                 "title": point.payload.get("title", ""),
-                "url": point.payload.get("url", "")
+                "url": point.payload.get("url", ""),
             }
             chunks.append(chunk_data)
         logger.info(f"Exported {len(chunks)}/{total_points} chunks...")
@@ -89,18 +92,25 @@ def export_chunks(
         print(f"\nExported {len(chunks)} chunks to {output_file}")
     return len(chunks)
 
+
 def main():
     parser = argparse.ArgumentParser(description="Export Qdrant chunks to JSON")
-    parser.add_argument("--output", type=str, default="data/processed/felinet_chunks.json", help="Output JSON file path")
-    parser.add_argument("--collection", type=str, default="felinet_chunks", help="Qdrant collection name")
-    parser.add_argument("--url", type=str, default="http://localhost:6333", help="Qdrant server URL")
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="data/processed/felinet_chunks.json",
+        help="Output JSON file path",
+    )
+    parser.add_argument(
+        "--collection", type=str, default="felinet_chunks", help="Qdrant collection name"
+    )
+    parser.add_argument(
+        "--url", type=str, default="http://localhost:6333", help="Qdrant server URL"
+    )
     args = parser.parse_args()
 
-    export_chunks(
-        collection_name=args.collection,
-        qdrant_url=args.url,
-        output_path=args.output
-    )
+    export_chunks(collection_name=args.collection, qdrant_url=args.url, output_path=args.output)
+
 
 if __name__ == "__main__":
     main()

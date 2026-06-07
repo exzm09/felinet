@@ -13,6 +13,7 @@ from pathlib import Path
 import requests
 import trafilatura
 from bs4 import BeautifulSoup
+
 from felinet.schemas import ContentType, DataSource, SourceDocument
 
 logger = logging.getLogger(__name__)
@@ -21,16 +22,17 @@ WIKI_BASE = "https://en.wikipedia.org"
 BREED_LIST_URL = f"{WIKI_BASE}/wiki/List_of_cat_breeds"
 CRAWL_DELAY = 3  # Wikipedia is more permissive than Cornell
 
+
 def create_session() -> requests.Session:
     """
     Create a requests Session with proper headers.
     """
     session = requests.Session()
-    session.headers.update({
-        "User-Agent": "FeliNet/0.1 (respectful crawling)",
-        "Accept": "text/html"
-    })
+    session.headers.update(
+        {"User-Agent": "FeliNet/0.1 (respectful crawling)", "Accept": "text/html"}
+    )
     return session
+
 
 def discover_breed_urls(session: requests.Session) -> list[dict]:
     """
@@ -48,9 +50,9 @@ def discover_breed_urls(session: requests.Session) -> list[dict]:
     table = soup.find("table", class_="wikitable")
     if not table:
         raise ValueError("Could not find the breed wikitable")
-    
+
     breeds = []
-    rows = table.find_all("tr")[1:] # Skip header row
+    rows = table.find_all("tr")[1:]  # Skip header row
 
     for row in rows:
         cells = row.find_all(["td", "th"])
@@ -72,12 +74,10 @@ def discover_breed_urls(session: requests.Session) -> list[dict]:
         raw_name = first_cell.get_text(strip=True)
         clean_name = re.sub(r"\[\d+\]", "", raw_name).strip()
 
-        breeds.append({
-            "name": clean_name,
-            "url": f"{WIKI_BASE}{href}"
-        })
+        breeds.append({"name": clean_name, "url": f"{WIKI_BASE}{href}"})
     logger.info(f"Discovered {len(breeds)} breed URLs")
     return breeds
+
 
 def make_document_id(breed_name: str) -> str:
     """
@@ -86,12 +86,12 @@ def make_document_id(breed_name: str) -> str:
     """
     slug = breed_name.lower().replace(" ", "-")
     # Remove any characters that aren't letters, numbers, or hyphens
-    slug = re.sub(f"[^a-z0-9-]", "", slug)
+    slug = re.sub("[^a-z0-9-]", "", slug)
     return f"wiki-{slug}"
 
+
 def scrape_wikipedia_breeds(
-        output_dir: str = "data/raw/wikipedia",
-        max_breeds: int | None = None
+    output_dir: str = "data/raw/wikipedia", max_breeds: int | None = None
 ) -> list[SourceDocument]:
     """
     Main entry point: ran the full Wikipedia breeds scraping pipeline.
@@ -129,29 +129,18 @@ def scrape_wikipedia_breeds(
             response.raise_for_status()
         except requests.RequestException as e:
             logger.warning(f"   Failed to fetch: {e}")
-            failed.append({
-                "breed": name,
-                "url": url,
-                "reason": f"fetch failure: {e}"
-            })
+            failed.append({"breed": name, "url": url, "reason": f"fetch failure: {e}"})
             time.sleep(CRAWL_DELAY)
             continue
 
         # Extract content with trafilatura
         content = trafilatura.extract(
-            response.text,
-            include_comments=False,
-            include_tables=True,
-            include_links=False
+            response.text, include_comments=False, include_tables=True, include_links=False
         )
 
         if not content or len(content.strip()) < 50:
-            logger.warning(f"   No usable content extracted")
-            failed.append({
-                "breed": name,
-                "url": url,
-                "reason": "extraction failure"
-            })
+            logger.warning("   No usable content extracted")
+            failed.append({"breed": name, "url": url, "reason": "extraction failure"})
             time.sleep(CRAWL_DELAY)
             continue
 
@@ -167,17 +156,13 @@ def scrape_wikipedia_breeds(
                 metadata={
                     "word_count": len(content.split()),
                     "char_count": len(content),
-                    "breed_name": name
-                }
+                    "breed_name": name,
+                },
             )
             documents.append(doc)
             logger.info(f"  Finished {name} ({doc.metadata["word_count"]} words)")
         except Exception as e:
-            failed.append({
-                "breed": name, 
-                "url": url,
-                "reason": str(e)
-            })
+            failed.append({"breed": name, "url": url, "reason": str(e)})
             logger.warning(f"   Validation failed: {e}")
 
         # Wait between requests
@@ -202,11 +187,10 @@ def scrape_wikipedia_breeds(
 
     return documents
 
+
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(message)s",
-        datefmt="%H:%M:%S"
+        level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s", datefmt="%H:%M:%S"
     )
 
     docs = scrape_wikipedia_breeds()

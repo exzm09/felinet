@@ -4,10 +4,12 @@ Cornell Feline Health Center Scraper
 Discover articale URLs from the index page, extracts clean test using trafilatura, validates with Pydantic, and save as JSON.
 Respoects robots.txt: 8-second delay between requests (> 6s requirement).
 """
+
 import json
 import logging
 import time
 from pathlib import Path
+
 # Combinw a base URL with a relative link handling edge cases (trailing slashes, absolute vs. relative paths)
 from urllib.parse import urljoin
 
@@ -27,16 +29,20 @@ TOPICS_INDEX_URL = (
 )
 CRAWL_DELAY = 7
 
+
 def create_session() -> requests.Session:
     """
     Create a requests Session with proper headers.
     """
     session = requests.Session()
-    session.headers.update({
-        "User-Agent": "FeliNet/0.1 (student ML project; respectful crawling)",
-        "Accept": "text/html"
-    })
+    session.headers.update(
+        {
+            "User-Agent": "FeliNet/0.1 (student ML project; respectful crawling)",
+            "Accept": "text/html",
+        }
+    )
     return session
+
 
 def discover_article_urls(session: requests.Session) -> list[str]:
     """
@@ -102,9 +108,10 @@ def discover_article_urls(session: requests.Session) -> list[str]:
             # Must have content after and not be a section
             if path_after and "/" not in path_after:
                 article_urls.add(full_url)
-    urls = sorted(article_urls) # for reproducibility
+    urls = sorted(article_urls)  # for reproducibility
     logger.info(f"Discovered {(len(urls))} article URLs")
     return urls
+
 
 def extract_article(session: requests.Session, url: str) -> dict | None:
     """
@@ -119,20 +126,17 @@ def extract_article(session: requests.Session, url: str) -> dict | None:
     except requests.RequestException as e:
         logger.warning(f"Failed to fetch {url}: {e}")
         return None
-    
+
     html = response.text
 
     # Return the main article text stripping user comments is any exist and keep data tables.
     content = trafilatura.extract(
-        html,
-        include_comments=False,
-        include_tables=True,
-        include_links=False
+        html, include_comments=False, include_tables=True, include_links=False
     )
     if not content or len(content.strip()) < 50:
         logger.warning(f"No usable content extracted from {url}")
         return None
-    
+
     # Extract title from the HTML <title> tag or <h1>
     soup = BeautifulSoup(html, "lxml")
     title = None
@@ -147,16 +151,13 @@ def extract_article(session: requests.Session, url: str) -> dict | None:
         if title_tag:
             # <title> often includes site name
             title = title_tag.get_text(strip=True).split("|")[0].strip()
-    
+
     if not title:
         logger.warning(f"No title found for {url}")
         return None
-    
-    return {
-        "url": url,
-        "title": title,
-        "content": content.strip()
-    }
+
+    return {"url": url, "title": title, "content": content.strip()}
+
 
 def classify_content_type(title: str) -> ContentType:
     """
@@ -164,21 +165,41 @@ def classify_content_type(title: str) -> ContentType:
     Could upgrade to ML-based classification later.
     """
     title_lower = title.lower()
-    
+
     # Order matters: check more specific categories first
     if any(kw in title_lower for kw in ["poison", "toxic", "hazard", "plant"]):
         return ContentType.TOXICOLOGY
     if any(kw in title_lower for kw in ["feed", "nutrition", "diet", "obesity", "food"]):
         return ContentType.NUTRITION
-    if any(kw in title_lower for kw in ["behavior", "aggression", "litter", "scratch", "lick", "soiling", "destructive"]):
+    if any(
+        kw in title_lower
+        for kw in ["behavior", "aggression", "litter", "scratch", "lick", "soiling", "destructive"]
+    ):
         return ContentType.BEHAVIOR
     if any(kw in title_lower for kw in ["breed", "persian", "siamese", "maine coon"]):
         return ContentType.BREED_PROFILE
-    if any(kw in title_lower for kw in ["disease", "virus", "cancer", "diabetes", "kidney", "asthma", "infection", "fiv", "leukemia", "heart", "liver", "urinary"]):
+    if any(
+        kw in title_lower
+        for kw in [
+            "disease",
+            "virus",
+            "cancer",
+            "diabetes",
+            "kidney",
+            "asthma",
+            "infection",
+            "fiv",
+            "leukemia",
+            "heart",
+            "liver",
+            "urinary",
+        ]
+    ):
         return ContentType.DISEASE
 
     # Default: general health article
     return ContentType.ARTICLE
+
 
 def make_document_id(url: str) -> str:
     """
@@ -189,9 +210,9 @@ def make_document_id(url: str) -> str:
     slug = url.strip("/").split("/")[-1]
     return f"cornell_{slug}"
 
+
 def scrape_cornell(
-        output_dir: str = "data/raw/cornell",
-        max_articles: int | None = None
+    output_dir: str = "data/raw/cornell", max_articles: int | None = None
 ) -> list[SourceDocument]:
     """
     Main entry point: run the full Cornell scraping pipeline.
@@ -217,7 +238,7 @@ def scrape_cornell(
     # Stage 2 & 3 - Extract & Validate
     documents: list[SourceDocument] = []
     failed: list[dict] = []
-    seen_urls: set[str] = set() # Track final URLs to avoid duplicates
+    seen_urls: set[str] = set()  # Track final URLs to avoid duplicates
 
     for i, url in enumerate(urls):
         logger.info(f"[{i + 1} / {len(urls)}] Scraping: {url}")
@@ -244,17 +265,14 @@ def scrape_cornell(
         # Return the main article text stripping user comments is any exist and keep data tables.
         html = response.text
         content = trafilatura.extract(
-            html,
-            include_comments=False,
-            include_tables=True,
-            include_links=False
+            html, include_comments=False, include_tables=True, include_links=False
         )
         if not content or len(content.strip()) < 50:
             logger.warning(f"No usable content extracted from {url}")
             failed.append({"url": final_url, "reason": "extraction failure"})
             time.sleep(CRAWL_DELAY)
             continue
-        
+
         # Extract title from the HTML <title> tag or <h1>
         soup = BeautifulSoup(html, "lxml")
         title = None
@@ -269,7 +287,7 @@ def scrape_cornell(
             if title_tag:
                 # <title> often includes site name
                 title = title_tag.get_text(strip=True).split("|")[0].strip()
-        
+
         if not title:
             logger.warning(f"No title found for {url}")
             failed.append({"url": final_url, "reason": "no title"})
@@ -289,8 +307,8 @@ def scrape_cornell(
                     "word_count": len(content.split()),
                     "char_count": len(content),
                     "original_url": url,
-                    "was_redirect": url != final_url
-                }
+                    "was_redirect": url != final_url,
+                },
             )
             documents.append(doc)
             logger.info(f"  Finished {doc.title} ({doc.metadata['word_count']} words)")
@@ -299,7 +317,7 @@ def scrape_cornell(
             logger.warning(f"   Validation failure: {e}")
 
         # Wait between requests
-        if i < len(urls) - 1: # Don't wait after the last one
+        if i < len(urls) - 1:  # Don't wait after the last one
             time.sleep(CRAWL_DELAY)
 
     # Save results
@@ -322,13 +340,12 @@ def scrape_cornell(
         logger.info(f"Failure log saved to {fail_file}")
     return documents
 
+
 # Run
 if __name__ == "__main__":
     # Show INFO-level messages with timestamps
     logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(message)s",
-        datefmt="%H:%M:%S"
+        level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s", datefmt="%H:%M:%S"
     )
 
     # Start with 5 articles to test, then remove the limite for the full run

@@ -1,7 +1,9 @@
 """
 Log-fine-tuning experiment to MLflow.
 """
+
 from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
@@ -89,8 +91,8 @@ def log_finetuning_experiment(
     print("MLFLOW LOGGING COMPLETE")
     print("=" * 60)
     print(f"  Experiment: {experiment_name}")
-    print(f"  Runs logged: 2 (baseline + fine-tuned)")
-    print(f"    Then open http://localhost:5000 in your browser")
+    print("  Runs logged: 2 (baseline + fine-tuned)")
+    print("    Then open http://localhost:5000 in your browser")
     print("=" * 60)
 
 

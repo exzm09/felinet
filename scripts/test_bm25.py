@@ -1,21 +1,25 @@
 """
 Build and test the BM25 index.
 """
+
 from __future__ import annotations
-import logging
+
 import argparse
-import time
+import logging
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(name)s | %(message)s")
 
 logger = logging.getLogger(__name__)
 
+
 def main():
     parser = argparse.ArgumentParser(description="Build and test BM25 index")
     parser.add_argument(
-        "--chunks", type=str, default="data/processed/felinet_chunks.json",
-        help="Path to chunked corpus JSON"
+        "--chunks",
+        type=str,
+        default="data/processed/felinet_chunks.json",
+        help="Path to chunked corpus JSON",
     )
     args = parser.parse_args()
 
@@ -26,14 +30,12 @@ def main():
         print("\nNeed a JSON file containing your chunked corpus.")
         print("Run python scripts/export_chunks_from_qdrant.py to export from Qdrant")
         return
-    
+
     # Step 2: Build the BM25 index
     from felinet.rag.retriever import BM25Index
 
     print(f"\nBuilding BM25 index from {chunks_path}...")
-    start = time.time()
     index = BM25Index.from_corpus(str(chunks_path))
-    build_time = time.time() - start
 
     # Step 3: Run test queries
     test_queries = [

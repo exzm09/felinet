@@ -3,7 +3,9 @@ FeliNet Hybrid Retriever - BM25 + Dense search with Reciprocal Rank Fusion
 
 Add keyword-search (BM25) alongside the dense vector search, then merge the result lists using RRF.
 """
+
 from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
@@ -12,11 +14,12 @@ import numpy as np
 from rank_bm25 import BM25Okapi
 
 from felinet.embeddings.vector_store import get_client, search
-from felinet.schemas import RAGConfig, RetrievedChunk, DataSource
+from felinet.schemas import DataSource, RAGConfig, RetrievedChunk
 
 logger = logging.getLogger(__name__)
 
 # BM25 Index - build an in-memory keyword search index over chunks
+
 
 class BM25Index:
     """
@@ -27,11 +30,11 @@ class BM25Index:
     """
 
     def __init__(
-            self,
-            bm25: BM25Okapi,
-            chunk_ids: list[str],
-            chunk_texts: list[str],
-            chunk_metadata: list[dict]
+        self,
+        bm25: BM25Okapi,
+        chunk_ids: list[str],
+        chunk_texts: list[str],
+        chunk_metadata: list[dict],
     ):
         """
         Parameters
@@ -80,14 +83,16 @@ class BM25Index:
             cid = chunk.get("chunk_id", chunk.get("id", ""))
             chunk_ids.append(cid)
             chunk_texts.append(chunk["content"])
-            chunk_metadata.append({
-                "source": chunk.get("source", "unknown"),
-                "document_id": chunk.get("document_id", ""),
-                "content_type": chunk.get("content_type", ""),
-                "chunk_index": chunk.get("chunk_index", 0),
-                "title": chunk.get("title", ""),
-                "url": chunk.get("url")
-            })
+            chunk_metadata.append(
+                {
+                    "source": chunk.get("source", "unknown"),
+                    "document_id": chunk.get("document_id", ""),
+                    "content_type": chunk.get("content_type", ""),
+                    "chunk_index": chunk.get("chunk_index", 0),
+                    "title": chunk.get("title", ""),
+                    "url": chunk.get("url"),
+                }
+            )
         # Tokenize: split each chunk into lowercase words
         tokenized_chunks = [text.lower().split() for text in chunk_texts]
 
@@ -96,7 +101,7 @@ class BM25Index:
 
         logger.info(f"BM25 index built: {len(chunk_ids)} chunks indexed")
         return cls(bm25, chunk_ids, chunk_texts, chunk_metadata)
-    
+
     def search(self, query: str, top_k: int = 30) -> list[dict]:
         """
         Search the BM25 index for chunks matching the query keywords
@@ -129,31 +134,37 @@ class BM25Index:
             if scores[idx] <= 0:
                 break
 
-            results.append({
-                "chunk_id": self.chunk_ids[idx],
-                "content": self.chunk_texts[idx],
-                "source": self.chunk_metadata[idx]["source"],
-                "score": float(scores[idx]),
-                "title": self.chunk_metadata[idx]["title"],
-                "url": self.chunk_metadata[idx]["url"]
-            })
+            results.append(
+                {
+                    "chunk_id": self.chunk_ids[idx],
+                    "content": self.chunk_texts[idx],
+                    "source": self.chunk_metadata[idx]["source"],
+                    "score": float(scores[idx]),
+                    "title": self.chunk_metadata[idx]["title"],
+                    "url": self.chunk_metadata[idx]["url"],
+                }
+            )
 
         if results:
-            logger.info(f"BM25 search: '{query[:50]}...' -> {len(results)} results "
-                        f"(top score: {results[0]['score']:.2f})")
-            
+            logger.info(
+                f"BM25 search: '{query[:50]}...' -> {len(results)} results "
+                f"(top score: {results[0]['score']:.2f})"
+            )
+
         else:
             logger.info(f"BM25 search: '{query[:50]}...' -> 0 result")
         return results
-    
+
+
 # Reciprocal Rank Fusion - merges two ranked lists into one
 
+
 def reciprocal_rank_fusion(
-        dense_results: list[dict],
-        bm25_results: list[dict],
-        k: int = 60,
-        dense_weight: float = 1.0,
-        bm25_weight: float = 1.0
+    dense_results: list[dict],
+    bm25_results: list[dict],
+    k: int = 60,
+    dense_weight: float = 1.0,
+    bm25_weight: float = 1.0,
 ) -> list[dict]:
     """
     Merge dense vector and BM25 (keyword) results using RRF.
@@ -195,7 +206,7 @@ def reciprocal_rank_fusion(
             "dense_rank": rank + 1,
             "dense_score": result.get("score", 0.0),
             "bm25_rank": None,
-            "bm25_score": 0.0
+            "bm25_score": 0.0,
         }
 
     # Process BM25 results
@@ -221,7 +232,7 @@ def reciprocal_rank_fusion(
                 "dense_rank": None,
                 "dense_score": 0.0,
                 "bm25_rank": rank + 1,
-                "bm25_score": result.get("score", 0.0)
+                "bm25_score": result.get("score", 0.0),
             }
     # Sort by RRF score (highest = most relevant)
     fused = sorted(fused_scores.values(), key=lambda x: x["rrf_score"], reverse=True)
@@ -230,18 +241,21 @@ def reciprocal_rank_fusion(
     both = sum(1 for r in fused if r["dense_rank"] and r["bm25_rank"])
     d_only = sum(1 for r in fused if r["dense_rank"] and not r["bm25_rank"])
     b_only = sum(1 for r in fused if not r["dense_rank"] and r["bm25_rank"])
-    logger.info(f"RRF fusion: {len(fused)} unqiue chunks | "
-                f"in both {both} | dense only: {d_only} | bm25 only: {b_only}")
-    
+    logger.info(
+        f"RRF fusion: {len(fused)} unqiue chunks | "
+        f"in both {both} | dense only: {d_only} | bm25 only: {b_only}"
+    )
+
     return fused
+
 
 # Hybrid Search - main function
 def hybrid_search(
-        query: str,
-        query_vector: list[float],
-        bm25_index: BM25Index,
-        config: RAGConfig,
-        qdrant_url: str = "http://localhost:6333"
+    query: str,
+    query_vector: list[float],
+    bm25_index: BM25Index,
+    config: RAGConfig,
+    qdrant_url: str = "http://localhost:6333",
 ) -> list[RetrievedChunk]:
     """
     Run hybrid search: BM25 + dense retrieval -> RRF fusion -> top chunks.
@@ -270,14 +284,13 @@ def hybrid_search(
     top_k_search = config.retrieval.top_k_initial
     top_k_final = config.retrieval.top_k_reranked
 
-
     # Lane 1: Dense search (Qdrant)
     client = get_client(url=qdrant_url)
     dense_results = search(
         client=client,
         query_vector=query_vector,
         collection_name=config.collection_name,
-        top_k=top_k_search
+        top_k=top_k_search,
     )
     logger.info(f"Dense search returned {len(dense_results)} results")
 
@@ -290,7 +303,7 @@ def hybrid_search(
         bm25_results=bm25_results,
         k=60,
         dense_weight=config.retrieval.dense_weight,
-        bm25_weight=config.retrieval.bm25_weight
+        bm25_weight=config.retrieval.bm25_weight,
     )
 
     # Take top results and convert to RetrievedChunk
@@ -303,7 +316,7 @@ def hybrid_search(
         try:
             source_enum = DataSource(result["source"])
         except ValueError:
-            source_enum = DataSource.CORNELL    # fallback for unknown sources
+            source_enum = DataSource.CORNELL  # fallback for unknown sources
 
         retrieved.append(
             RetrievedChunk(
@@ -312,11 +325,13 @@ def hybrid_search(
                 source=source_enum,
                 score=result["rrf_score"],
                 document_title=result.get("title") or None,
-                url=result.get("url") or None
+                url=result.get("url") or None,
             )
         )
-    logger.info(f"Hybrid search complete: {len(retrieved)} chunks | "
-                f"dense_weight={config.retrieval.dense_weight} | "
-                f"bm25_weight={config.retrieval.bm25_weight}")
-    
+    logger.info(
+        f"Hybrid search complete: {len(retrieved)} chunks | "
+        f"dense_weight={config.retrieval.dense_weight} | "
+        f"bm25_weight={config.retrieval.bm25_weight}"
+    )
+
     return retrieved

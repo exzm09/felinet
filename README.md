@@ -68,7 +68,7 @@ pytest tests/
 - [X] Week 9: Synthetic training data
 - [X] Week 10: Embedding fine-tuning
 - [X] Week 11: Guardrails
-- [ ] Week 12: CI/CD quality gates
+- [X] Week 12: CI/CD quality gates
 - [ ] Week 13: Drift detection + monitoring
 - [ ] Week 14: A/B testing + feedback loops
 - [ ] Week 15: Frontend + deployment

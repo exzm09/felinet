@@ -1,6 +1,7 @@
 """
 Run synthetic question generation for embedding fine-tunning.
 """
+
 import argparse
 import sys
 import time
@@ -14,10 +15,20 @@ from felinet.embeddings.chunker import chunk_corpus
 from felinet.embeddings.training_data import TrainingDataConfig, run_generation
 from felinet.schemas import ChunkingConfig
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Generate synthetic training pairs for embedding fine-tuning")
-    parser.add_argument("--limit", type=int, default=None, help="Process only the first N chunks (for testing)")
-    parser.add_argument("--questions", type=int, default=3, help="Number of questions to generate per chunk (default: 3)")
+    parser = argparse.ArgumentParser(
+        description="Generate synthetic training pairs for embedding fine-tuning"
+    )
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Process only the first N chunks (for testing)"
+    )
+    parser.add_argument(
+        "--questions",
+        type=int,
+        default=3,
+        help="Number of questions to generate per chunk (default: 3)",
+    )
     args = parser.parse_args()
     print("=" * 60)
     print("FeliNet - Synthetic Training Data Generation")
@@ -36,17 +47,18 @@ def main():
     # Conver DocumentChunk objects to dicts for generator
     chunk_dicts = []
     for c in chunks:
-        chunk_dicts.append({
-            "id": c.id,
-            "content": c.content,
-            "source": c.source.value,
-            "title": c.metadata.get("title", "")
-        })
-
+        chunk_dicts.append(
+            {
+                "id": c.id,
+                "content": c.content,
+                "source": c.source.value,
+                "title": c.metadata.get("title", ""),
+            }
+        )
 
     # Apply limit if specified
     if args.limit:
-        chunk_dicts = chunk_dicts[:args.limit]
+        chunk_dicts = chunk_dicts[: args.limit]
         print(f"Limited to first {args.limit} chunks")
 
     # Step 2: Generate training pairs

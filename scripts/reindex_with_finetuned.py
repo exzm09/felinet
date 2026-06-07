@@ -2,18 +2,19 @@
 Re-embed corpus with the fine-tuned model.
 Replace all the old embeddings in Qdrant vector database with new ones from fine-tuned model preventing embedding drift
 """
+
 from __future__ import annotations
+
 import argparse
 import logging
 import time
-from pathlib import Path
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-from felinet.embeddings.vector_store import get_client, create_collection, upsert_chunks, search
-from felinet.embeddings.chunker import chunk_corpus
 from felinet.data.loader import load_corpus
+from felinet.embeddings.chunker import chunk_corpus
+from felinet.embeddings.vector_store import create_collection, get_client, search, upsert_chunks
 from felinet.schemas import ChunkingConfig
 
 logging.basicConfig(
@@ -58,7 +59,7 @@ def reindex_corpus(
     model = SentenceTransformer(model_path)
     embedding_dim = model.get_sentence_embedding_dimension()
     logger.info(f"Embedding dimension: {embedding_dim}")
-    logger.info(f"Model loaded successfully.")
+    logger.info("Model loaded successfully.")
 
     # Step 2: Load and chunk corpus
     logger.info(f"Loading corpus from: {corpus_path}")
@@ -84,7 +85,7 @@ def reindex_corpus(
         batch_embeddings = model.encode(
             batch_texts,
             show_progress_bar=False,
-            normalize_embeddings=True   # L2 normalize for consine similarity
+            normalize_embeddings=True,  # L2 normalize for consine similarity
         )
         all_embeddings.append(batch_embeddings)
 
@@ -97,24 +98,18 @@ def reindex_corpus(
     # Step 4: Update chunks with new embeddings
     for chunk, embedding in zip(chunks, embeddings):
         chunk.embedding = embedding.tolist()
-        chunk.embedding_model = "felinet-embedding-v1" 
+        chunk.embedding_model = "felinet-embedding-v1"
 
     # Step 5: Recreate Qdrant collection and upsert
     logger.info(f"Recreating Qdrant collection: {collection_name}")
     client = get_client()
     create_collection(
-        client=client,
-        collection_name=collection_name,
-        vector_size=embedding_dim,
-        recreate=True
+        client=client, collection_name=collection_name, vector_size=embedding_dim, recreate=True
     )
 
     logger.info(f"Upserting {len(chunks)} chunks to Qdrant...")
     upsert_chunks(
-        client=client,
-        chunks=chunks,
-        collection_name=collection_name,
-        batch_size=batch_size
+        client=client, chunks=chunks, collection_name=collection_name, batch_size=batch_size
     )
 
     elapsed = time.time() - start_time
@@ -126,16 +121,13 @@ def reindex_corpus(
     query_embedding = model.encode(test_query, normalize_embeddings=True).tolist()
 
     results = search(
-        client=client,
-        query_vector=query_embedding,
-        collection_name=collection_name,
-        top_k=3
+        client=client, query_vector=query_embedding, collection_name=collection_name, top_k=3
     )
 
     print("\n" + "=" * 60)
     print("RE-INDEXING COMPLETE")
     print("=" * 60)
-    print(f"  Model: felinet-embedding-v1 (fine-tuned)")
+    print("  Model: felinet-embedding-v1 (fine-tuned)")
     print(f"  Chunks indexed: {len(chunks)}")
     print(f"  Embedding dim: {embedding_dim}")
     print(f"  Time: {elapsed:.1f} seconds")
@@ -153,15 +145,22 @@ def reindex_corpus(
         "elapsed_seconds": elapsed,
     }
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Re-embed corpus with fine-tuned model and update Qdrant"
     )
-    parser.add_argument("--model", type=str, default="models/felinet-embedding-v1", help="Path to fine-tuned model folder"
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="models/felinet-embedding-v1",
+        help="Path to fine-tuned model folder",
     )
-    parser.add_argument("--test", type=int, default=0, help="If > 0, only process this many chunks (for testing)"
+    parser.add_argument(
+        "--test", type=int, default=0, help="If > 0, only process this many chunks (for testing)"
     )
-    parser.add_argument("--collection", type=str, default="felinet_chunks", help="Qdrant collection name"
+    parser.add_argument(
+        "--collection", type=str, default="felinet_chunks", help="Qdrant collection name"
     )
     args = parser.parse_args()
 

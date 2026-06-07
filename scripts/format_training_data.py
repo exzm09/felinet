@@ -3,11 +3,14 @@ Format filtered training pairs for sentence-transformers fine-tuning.
 Take the filtered JSON and convert it into the format that sentence-transformers expects for training with MultipleNegativesRankingLoss.
 Output is a Hugging Face Dataset saved to disk.
 """
+
 from __future__ import annotations
+
 import argparse
 import json
 import random
 from pathlib import Path
+
 
 def format_for_training(
     input_path: str = "data/training/filtered_pairs.jsonl",
@@ -37,9 +40,7 @@ def format_for_training(
     output_dir = Path(output_dir)
 
     if not input_path.exists():
-        raise FileNotFoundError(
-            f"Filtered pairs not found at {input_path}. "
-        )
+        raise FileNotFoundError(f"Filtered pairs not found at {input_path}. ")
 
     # Load all filtered pairs
     pairs = []
@@ -48,12 +49,7 @@ def format_for_training(
             line = line.strip()
             if line:
                 data = json.loads(line)
-                pairs.append(
-                    {
-                        "anchor": data["query"],
-                        "positive": data["positive"]
-                    }
-                )
+                pairs.append({"anchor": data["query"], "positive": data["positive"]})
     print(f"Loaded {len(pairs)} filtered pairs")
 
     # Shuffle with fixed seed for reproducibility
@@ -77,7 +73,7 @@ def format_for_training(
             for pair in data:
                 f.write(json.dumps(pair, ensure_ascii=False) + "\n")
 
-    # Have a metadata file recording 
+    # Have a metadata file recording
     meta = {
         "source": str(input_path),
         "total_pairs": len(pairs),
@@ -94,7 +90,7 @@ def format_for_training(
         json.dump(meta, f, indent=2)
 
     print(f"\n{'=' * 60}")
-    print(f"DATASET READY FOR FINE-TUNING")
+    print("DATASET READY FOR FINE-TUNING")
     print(f"{'=' * 60}")
     print(f"  Train: {train_path}")
     print(f"  Val:   {val_path}")
@@ -107,18 +103,21 @@ def format_for_training(
         "total": len(pairs),
     }
 
+
 def main():
-    parser = argparse.ArgumentParser(
-        description="Format training pairs for sentence-transformers"
-    )
+    parser = argparse.ArgumentParser(description="Format training pairs for sentence-transformers")
     parser.add_argument(
         "--val-split", type=float, default=0.1, help="Validation split fraction (default: 0.1)"
     )
     parser.add_argument(
-        "--input", type=str, default="data/training/filtered_pairs.jsonl",
+        "--input",
+        type=str,
+        default="data/training/filtered_pairs.jsonl",
     )
     parser.add_argument(
-        "--output", type=str, default="data/training/dataset",
+        "--output",
+        type=str,
+        default="data/training/dataset",
     )
     args = parser.parse_args()
 

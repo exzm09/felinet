@@ -3,6 +3,7 @@ CFA (Cat Fanciers' Association) Breed Scraper.
 Discovers breed URLs from the CFA breeds index page, ectract clean text using trafilatura, validates with Pydantic, and saves as JSON.
 CFA is a smaller site - use a 5-sec dalay to be respectful.
 """
+
 import json
 import logging
 import re
@@ -11,7 +12,6 @@ from pathlib import Path
 
 import requests
 import trafilatura
-from bs4 import BeautifulSoup
 
 from felinet.schemas import ContentType, DataSource, SourceDocument
 
@@ -71,18 +71,17 @@ CFA_BREEDS = [
     {"name": "Turkish Van", "slug": "turkish-van"},
 ]
 
+
 def create_session() -> requests.Session:
     """
     Create a requests Session with proper headers.
     """
     session = requests.Session()
     session.headers.update(
-        {
-            "User-Agent": "FeliNet/0.1 (respectful crawling)",
-            "Accept": "text/html"
-        }
+        {"User-Agent": "FeliNet/0.1 (respectful crawling)", "Accept": "text/html"}
     )
     return session
+
 
 def discover_breed_urls(session: requests.Session) -> list[dict]:
     """
@@ -91,13 +90,12 @@ def discover_breed_urls(session: requests.Session) -> list[dict]:
     Returns:
         List of dicts: [{"name": "Abyssinian", "url": "https://cfa.org/abyssinian/"}, ...]
     """
-    breeds = [{
-        "name": breed["name"],
-        "url": f"{CFA_BASE}/breed/{breed['slug']}/"
-    }
-    for breed in CFA_BREEDS]
+    breeds = [
+        {"name": breed["name"], "url": f"{CFA_BASE}/breed/{breed['slug']}/"} for breed in CFA_BREEDS
+    ]
     logger.info(f"Loaded {len(breeds)} CFA breed URLs from static list")
     return breeds
+
 
 def make_document_id(breed_name: str) -> str:
     """
@@ -108,9 +106,9 @@ def make_document_id(breed_name: str) -> str:
     slug = re.sub(r"[^a-z0-9-]", "", slug)
     return f"cfa_{slug}"
 
+
 def scrape_cfa_breeds(
-        output_dir: str = "data/raw/cfa",
-        max_breeds: int | None = None
+    output_dir: str = "data/raw/cfa", max_breeds: int | None = None
 ) -> list[SourceDocument]:
     """
     Main entry point: run the full CFA breeds scraping pipeline.
@@ -148,29 +146,18 @@ def scrape_cfa_breeds(
             response.raise_for_status()
         except requests.RequestException as e:
             logger.warning(f"   Failed to fetch: {e}")
-            failed.append({
-                "breed": name,
-                "url": url,
-                "reason": f"fetch failure: {e}"
-            })
+            failed.append({"breed": name, "url": url, "reason": f"fetch failure: {e}"})
             time.sleep(CRAWL_DELAY)
             continue
 
         # Extract contengt with trafilatura
         content = trafilatura.extract(
-            response.text,
-            include_comments=False,
-            include_tables=True,
-            include_links=False
+            response.text, include_comments=False, include_tables=True, include_links=False
         )
 
         if not content or len(content.strip()) < 50:
-            logger.warning(f"   No usable content extracted")
-            failed.append({
-                "breed": name,
-                "url": url,
-                "reason": "extraction failure"
-            })
+            logger.warning("   No usable content extracted")
+            failed.append({"breed": name, "url": url, "reason": "extraction failure"})
             time.sleep(30)
             continue
 
@@ -187,23 +174,19 @@ def scrape_cfa_breeds(
                     "word_count": len(content.split()),
                     "char_count": len(content),
                     "breed_name": name,
-                    "registry": "CFA"
-                }
+                    "registry": "CFA",
+                },
             )
             documents.append(doc)
             logger.info(f"  Finished {name} ({doc.metadata["word_count"]} words)")
         except Exception as e:
-            failed.append({
-                "breed": name,
-                "url": url,
-                "reason": str(e)
-            })
+            failed.append({"breed": name, "url": url, "reason": str(e)})
             logger.warning(f"   Validation failed: {e}")
 
         # Wait between requests
         if i < len(breeds) - 1:
             time.sleep(CRAWL_DELAY)
-    
+
     # Save results
     docs_data = [doc.model_dump(mode="json") for doc in documents]
 
@@ -222,11 +205,10 @@ def scrape_cfa_breeds(
 
     return documents
 
+
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(message)s",
-        datefmt="%H:%M:%S"
+        level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s", datefmt="%H:%M:%S"
     )
     docs = scrape_cfa_breeds()
     print(f"\nScraped {len(docs)} breeds successfully")

@@ -7,6 +7,7 @@ Three layers of defense:
     3. Output guardrails: hallucination check, response length, citation verification
 Each guardrail returns a GuardrailResult - either PASS (continue) or BLOCK (reject) with a human-readable reason explaining what triggered it.
 """
+
 from __future__ import annotations
 
 import logging
@@ -16,13 +17,16 @@ from enum import Enum
 
 logger = logging.getLogger(__name__)
 
+
 # Result types
 class GuardrailAction(str, Enum):
     """
     What the guardrail decided to do.
     """
+
     PASS = "pass"
     BLOCK = "block"
+
 
 @dataclass
 class GuardrailResult:
@@ -33,6 +37,7 @@ class GuardrailResult:
     - reason: why it was blocked
     - details: extra info for debugging
     """
+
     action: GuardrailAction
     guardrail_name: str
     reason: str = ""
@@ -44,11 +49,12 @@ class GuardrailResult:
         Convenience: True if the guardrail passed
         """
         return self.action == GuardrailAction.PASS
-    
+
     @property
     def blocked(self) -> bool:
         return self.action == GuardrailAction.BLOCK
-    
+
+
 # Safe fallback messages
 FALLBACK_MESSAGES = {
     "off_topic": (
@@ -58,8 +64,7 @@ FALLBACK_MESSAGES = {
         "Could you rephrase your question about cats?"
     ),
     "prompt_injection": (
-        "I wasn't able to process that query. Could you rephrase your "
-        "question about cats?"
+        "I wasn't able to process that query. Could you rephrase your " "question about cats?"
     ),
     "pii_detected": (
         "It looks like your message contains personal information "
@@ -89,30 +94,89 @@ FALLBACK_MESSAGES = {
 
 CAT_KEYWORDS = {
     # Animal terms
-    "cat", "cats", "kitten", "kittens", "kitty", "feline", "felines",
-    "tomcat", "tabby", "calico", "tortoiseshell",
+    "cat",
+    "cats",
+    "kitten",
+    "kittens",
+    "kitty",
+    "feline",
+    "felines",
+    "tomcat",
+    "tabby",
+    "calico",
+    "tortoiseshell",
     # Breed names (common ones — not exhaustive)
-    "persian", "siamese", "maine coon", "ragdoll", "bengal", "abyssinian",
-    "sphynx", "scottish fold", "british shorthair", "russian blue",
-    "birman", "burmese", "devon rex", "cornish rex", "oriental",
-    "norwegian forest", "turkish angora", "himalayan", "manx",
-    "exotic shorthair", "savannah", "siberian", "tonkinese", "bombay",
-    "chartreux", "korat", "ocicat", "selkirk rex", "somali",
-    "american shorthair", "balinese", "javanese", "singapura",
-    "turkish van", "snowshoe", "ragamuffin", "lykoi", "munchkin",
-    "nebelung", "egyptian mau", "havana brown", "laperm",
+    "persian",
+    "siamese",
+    "maine coon",
+    "ragdoll",
+    "bengal",
+    "abyssinian",
+    "sphynx",
+    "scottish fold",
+    "british shorthair",
+    "russian blue",
+    "birman",
+    "burmese",
+    "devon rex",
+    "cornish rex",
+    "oriental",
+    "norwegian forest",
+    "turkish angora",
+    "himalayan",
+    "manx",
+    "exotic shorthair",
+    "savannah",
+    "siberian",
+    "tonkinese",
+    "bombay",
+    "chartreux",
+    "korat",
+    "ocicat",
+    "selkirk rex",
+    "somali",
+    "american shorthair",
+    "balinese",
+    "javanese",
+    "singapura",
+    "turkish van",
+    "snowshoe",
+    "ragamuffin",
+    "lykoi",
+    "munchkin",
+    "nebelung",
+    "egyptian mau",
+    "havana brown",
+    "laperm",
     # Health terms often associated with cats
-    "hairball", "litter box", "litterbox", "catnip", "scratching post",
-    "felv", "fiv", "fip", "feline leukemia", "feline immunodeficiency",
+    "hairball",
+    "litter box",
+    "litterbox",
+    "catnip",
+    "scratching post",
+    "felv",
+    "fiv",
+    "fip",
+    "feline leukemia",
+    "feline immunodeficiency",
     "feline infectious peritonitis",
     # Food/nutrition terms specific to cats
-    "wet food", "dry food", "kibble", "taurine",
+    "wet food",
+    "dry food",
+    "kibble",
+    "taurine",
     # Behavior terms
-    "purring", "kneading", "zoomies", "meow", "meowing", "hissing",
+    "purring",
+    "kneading",
+    "zoomies",
+    "meow",
+    "meowing",
+    "hissing",
     "spraying",
 }
 # Queries that are too short or too vague - we can't meaningfully classify them, but we also don't want to block "What breed is my cat?" which is only 6 words.
 MIN_QUERY_LENGTH = 3  # characters
+
 
 def check_topic(query: str) -> GuardrailResult:
     """
@@ -127,25 +191,26 @@ def check_topic(query: str) -> GuardrailResult:
         return GuardrailResult(
             action=GuardrailAction.PASS,
             guardrail_name="topic_check",
-            reason="Query too short to classify, allong through"
+            reason="Query too short to classify, allong through",
         )
-    
+
     # Check for any cat keyword in the query
     for keyword in CAT_KEYWORDS:
         if keyword in query_lower:
             return GuardrailResult(
                 action=GuardrailAction.PASS,
                 guardrail_name="topic_check",
-                details={"matched_keyword": keyword}
+                details={"matched_keyword": keyword},
             )
-        
+
     # No cat keyword found
     return GuardrailResult(
         action=GuardrailAction.BLOCK,
         guardrail_name="topic_check",
         reason=f"Query does not appear to be about cats: '{query[:50]}'",
-        details={"query_preview": query[:80]}
+        details={"query_preview": query[:80]},
     )
+
 
 # 2. Prompt injection detection
 # Detect injection attack by looking for sus patterns, it catches the most common attacks but is not 100% bulletproof
@@ -185,6 +250,7 @@ _COMPILED_INJECTION_PATTERNS = [
     re.compile(pattern, re.IGNORECASE) for pattern in INJECTION_PATTERNS
 ]
 
+
 def check_prompt_injection(query: str) -> GuardrailResult:
     """
     Scan the query for known prompt injection patterns
@@ -199,13 +265,11 @@ def check_prompt_injection(query: str) -> GuardrailResult:
                 reason=f"Query contains prompt injection pattern: '{match.group()}'",
                 details={
                     "matched_pattern": match.group(),
-                    "pattern_index": _COMPILED_INJECTION_PATTERNS.index(pattern)
-                }
+                    "pattern_index": _COMPILED_INJECTION_PATTERNS.index(pattern),
+                },
             )
-    return GuardrailResult(
-        action=GuardrailAction.PASS,
-        guardrail_name="prompt_injection"
-    )
+    return GuardrailResult(action=GuardrailAction.PASS, guardrail_name="prompt_injection")
+
 
 # 3. PII filtering
 PII_PATTERNS = {
@@ -226,6 +290,7 @@ PII_PATTERNS = {
     ),
 }
 
+
 def check_pii(query: str) -> GuardrailResult:
     """
     Scan the query for PII
@@ -238,7 +303,7 @@ def check_pii(query: str) -> GuardrailResult:
                 action=GuardrailAction.BLOCK,
                 guardrail_name="pii_filter",
                 reason=f"Query contains {pii_type} - not sending to LLM for privacy",
-                details={"pii_type": pii_type}
+                details={"pii_type": pii_type},
             )
 
     return GuardrailResult(
@@ -246,7 +311,9 @@ def check_pii(query: str) -> GuardrailResult:
         guardrail_name="pii_filter",
     )
 
+
 # Combines input guardrail runner
+
 
 def run_input_guardrails(query: str) -> list[GuardrailResult]:
     """
@@ -268,27 +335,27 @@ def run_input_guardrails(query: str) -> list[GuardrailResult]:
     results.append(injection_result)
     if injection_result.blocked:
         return results
-    
+
     # PII
     pii_result = check_pii(query)
     results.append(pii_result)
     if pii_result.blocked:
         return results
-    
+
     # Topic check
     topic_result = check_topic(query)
     results.append(topic_result)
 
     return results
 
+
 # Confidence Gate - after retrieval, before generation
 DEFAULT_MIN_SCORE = 0.25  # Minimum retrieval score threshold
-DEFAULT_MIN_CHUNKS = 1    # Need at least 1 chunk above threshold
+DEFAULT_MIN_CHUNKS = 1  # Need at least 1 chunk above threshold
+
 
 def check_retrieval_confidence(
-        chunks: list,
-        min_score: float = DEFAULT_MIN_SCORE,
-        min_chunks: int = DEFAULT_MIN_CHUNKS
+    chunks: list, min_score: float = DEFAULT_MIN_SCORE, min_chunks: int = DEFAULT_MIN_CHUNKS
 ) -> GuardrailResult:
     """
     Check if retrieval returned sufficiently relevant chunks.
@@ -306,9 +373,9 @@ def check_retrieval_confidence(
             action=GuardrailAction.BLOCK,
             guardrail_name="retrieval_confidence",
             reason="No chunks retrieved - cannot generate a grounded answer",
-            details={"num_chunks": 0, "min_score": min_score}
+            details={"num_chunks": 0, "min_score": min_score},
         )
-    
+
     # Count chunks above threshold
     scores = [getattr(c, "score", 0.0) for c in chunks]
     relevant_count = sum(1 for s in scores if s >= min_score)
@@ -318,36 +385,36 @@ def check_retrieval_confidence(
         return GuardrailResult(
             action=GuardrailAction.BLOCK,
             guardrail_name="retrieval_confidence",
-            reason=(f"Only {relevant_count} chunk(s) above threshold {min_score} (need {min_chunks}). Top score: {top_score:.3f}"),
+            reason=(
+                f"Only {relevant_count} chunk(s) above threshold {min_score} (need {min_chunks}). Top score: {top_score:.3f}"
+            ),
             details={
                 "relevant_count": relevant_count,
                 "top_score": top_score,
                 "min_score": min_score,
-                "all_scores": [round(s, 3) for s in scores]
-            }
+                "all_scores": [round(s, 3) for s in scores],
+            },
         )
-    
+
     return GuardrailResult(
         action=GuardrailAction.PASS,
         guardrail_name="retrieval_confidence",
         details={
             "relevant_count": relevant_count,
             "top_score": top_score,
-        }
+        },
     )
+
 
 # Output Guardrails - run after the LLM generates an answer
 
 # 1. Citation / Hallucination check
 CITATION_PATTERN = re.compile(r"\[\d+\]")
 # Check if the answer content actually overlaps with the context. If the LLM says something that doesn't appear anywhere in the context, it's probably hallucinating.
-MIN_OVERLAP_RATIO = 0.15 
+MIN_OVERLAP_RATIO = 0.15
 
-def check_hallucination(
-        answer: str,
-        context: str,
-        chunks: list
-) -> GuardrailResult:
+
+def check_hallucination(answer: str, context: str, chunks: list) -> GuardrailResult:
     """
     Check is the LLM's answer is grounded in the retrieved context
     Three checks:
@@ -396,7 +463,9 @@ def check_hallucination(
     max_valid = len(chunks)
     invalid_citations = {n for n in cited_numbers if n < 1 or n > max_valid}
     if invalid_citations:
-        logger.warning(f"Answer cites non-existent sources: {invalid_citations} (only {max_valid} chunks available)")
+        logger.warning(
+            f"Answer cites non-existent sources: {invalid_citations} (only {max_valid} chunks available)"
+        )
         # Don't block (the LLM sometimes miscounts)
 
     # Check 3: Word overlap between answer and context
@@ -405,12 +474,56 @@ def check_hallucination(
 
     # Remove any common words that would inflate overlap
     stop_words = {
-        "the", "a", "an", "is", "are", "was", "were", "be", "been",
-        "being", "have", "has", "had", "do", "does", "did", "will",
-        "would", "could", "should", "may", "might", "can", "shall",
-        "to", "of", "in", "for", "on", "with", "at", "by", "from",
-        "and", "or", "but", "not", "no", "this", "that", "it", "its",
-        "as", "if", "then", "than", "so", "up", "out", "about",
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "can",
+        "shall",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "with",
+        "at",
+        "by",
+        "from",
+        "and",
+        "or",
+        "but",
+        "not",
+        "no",
+        "this",
+        "that",
+        "it",
+        "its",
+        "as",
+        "if",
+        "then",
+        "than",
+        "so",
+        "up",
+        "out",
+        "about",
     }
     answer_content_words = answer_words - stop_words
     context_content_words = context_words - stop_words
@@ -432,23 +545,25 @@ def check_hallucination(
             details={
                 "overlap_ratio": round(overlap_ratio, 3),
                 "threshold": MIN_OVERLAP_RATIO,
-                "num_citations": len(citations)
-            }
+                "num_citations": len(citations),
+            },
         )
-    
+
     return GuardrailResult(
-    action=GuardrailAction.PASS,
-    guardrail_name="hallucination_check",
-    details={
-        "num_citations": len(citations),
-        "overlap_ratio": round(overlap_ratio, 3),
-        "cited_sources": sorted(cited_numbers),
-    }
-)
+        action=GuardrailAction.PASS,
+        guardrail_name="hallucination_check",
+        details={
+            "num_citations": len(citations),
+            "overlap_ratio": round(overlap_ratio, 3),
+            "cited_sources": sorted(cited_numbers),
+        },
+    )
+
 
 # 2. Response length check
 MAX_RESPONSE_LENGTH = 3000  # characters — about 500-600 words
-MIN_RESPONSE_LENGTH = 10    # anything shorter is suspicious
+MIN_RESPONSE_LENGTH = 10  # anything shorter is suspicious
+
 
 def check_response_length(answer: str) -> GuardrailResult:
     """
@@ -478,12 +593,9 @@ def check_response_length(answer: str) -> GuardrailResult:
         details={"length": length},
     )
 
+
 # Combined output guardrail runner
-def run_output_guardrails(
-        answer: str,
-        context: str,
-        chunks: list
-) -> list[GuardrailResult]:
+def run_output_guardrails(answer: str, context: str, chunks: list) -> list[GuardrailResult]:
     """
     Run all output guardrails on an LLM response.
 
@@ -498,7 +610,7 @@ def run_output_guardrails(
 
     Returns:
         List of GuardrailResult objects.
-        If ANY has action=BLOCK, the pipeline should return a fallback message.    
+        If ANY has action=BLOCK, the pipeline should return a fallback message.
     """
     results = []
     # 1. Response length check (fast, catches obvious failures)

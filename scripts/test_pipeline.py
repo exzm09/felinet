@@ -7,8 +7,10 @@ Test on:
 3. Can we call Groq and get a response?
 4. Does Langfuse capture the trace?
 """
+
 import logging
 import time
+
 from felinet.embeddings.embedder import load_embedding_model
 from felinet.rag.pipeline import query_rag
 from felinet.schemas import RAGConfig
@@ -56,12 +58,15 @@ def main():
 
             print(f"A: {preview}")
             print(f"   Chunks used: {len(response.retrieved_chunks)}")
-            print(f"   Top source:  {response.retrieved_chunks[0].source.value if response.retrieved_chunks else 'none'}")
+            print(
+                f"   Top source:  {response.retrieved_chunks[0].source.value if response.retrieved_chunks else 'none'}"
+            )
             print(f"   Latency:     {response.latency_ms:.0f}ms")
             print(f"   Trace ID:    {response.trace_id}")
 
         except Exception as e:
             import traceback
+
             print(f"   ERROR: {e}")
             traceback.print_exc()
         time.sleep(10)

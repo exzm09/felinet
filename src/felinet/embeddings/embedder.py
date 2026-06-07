@@ -10,16 +10,17 @@ Wraps sentence-transformers to convert DocumentChunks into vectors.
 """
 
 from __future__ import annotations
+
 import logging
 
 from sentence_transformers import SentenceTransformer
+
 from felinet.schemas import DocumentChunk
 
 logger = logging.getLogger(__name__)
 
-def load_embedding_model(
-        model_name: str = "all-MiniLM-L6-v2"
-) -> SentenceTransformer:
+
+def load_embedding_model(model_name: str = "all-MiniLM-L6-v2") -> SentenceTransformer:
     """
     Load a sentence-transformer model.
     First call downloads the model weights to a local cache. Subsequent calls load from cache instantly.
@@ -33,10 +34,9 @@ def load_embedding_model(
     logger.info(f"Model loaded - embedding dimensions: {model.get_sentence_embedding_dimension()}")
     return model
 
+
 def embed_chunks(
-        chunks: list[DocumentChunk],
-        model: SentenceTransformer,
-        batch_size: int = 64
+    chunks: list[DocumentChunk], model: SentenceTransformer, batch_size: int = 64
 ) -> list[DocumentChunk]:
     """
     Embed a list of DocumentChunks in-place and return them.
@@ -66,7 +66,7 @@ def embed_chunks(
         texts,
         batch_size=batch_size,
         show_progress_bar=True,
-        normalize_embedding=True    # L2-normalize so cosine similiarity = dot product
+        normalize_embedding=True,  # L2-normalize so cosine similiarity = dot product
     )
     for chunk, vector in zip(chunks, embeddings):
         chunk.embedding = vector.tolist()

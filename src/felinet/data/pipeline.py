@@ -16,6 +16,7 @@ from felinet.schemas import DataSource, SourceDocument
 
 # Tasks - each @task is one step Perfect tracks indenpendently with its own retry logic, timing, state tracking, and logging
 
+
 @task(retries=2, retry_delay_seconds=30, name="scrape-cornell")
 def run_cornell_scaper(max_articles: int | None = None) -> list[SourceDocument]:
     """
@@ -26,9 +27,11 @@ def run_cornell_scaper(max_articles: int | None = None) -> list[SourceDocument]:
     logger.info("Starting Cornell scraper...")
     # Import here to avoid circular imports and keep startup fast
     from felinet.data.cornell_scraper import scrape_cornell
+
     docs = scrape_cornell(max_articles=max_articles)
     logger.info(f"Cornell scraper finished: {len(docs)} documents")
     return docs
+
 
 @task(retries=2, retry_delay_seconds=30, name="scrape-wikipedia")
 def run_wikipedia_scraper(max_breeds: int | None = None) -> list[SourceDocument]:
@@ -39,9 +42,11 @@ def run_wikipedia_scraper(max_breeds: int | None = None) -> list[SourceDocument]
     logger.info("Starting Wikipedia scraper...")
 
     from felinet.data.wikipedia_scraper import scrape_wikipedia_breeds
+
     docs = scrape_wikipedia_breeds(max_breeds=max_breeds)
     logger.info(f"Wikipedia scraper finished: {len(docs)} documents")
     return docs
+
 
 @task(retries=2, retry_delay_seconds=30, name="scrape-cfa")
 def run_cfa_scraper(max_breeds: int | None = None) -> list[SourceDocument]:
@@ -52,9 +57,11 @@ def run_cfa_scraper(max_breeds: int | None = None) -> list[SourceDocument]:
     logger.info("Starting CFA scraper...")
 
     from felinet.data.cfa_scraper import scrape_cfa_breeds
+
     docs = scrape_cfa_breeds(max_breeds=max_breeds)
     logger.info(f"CFA scraper finished: {len(docs)} documents")
     return docs
+
 
 @task(name="validate-corpus")
 def validate_corpus(documents: list[SourceDocument]) -> dict:
@@ -69,7 +76,7 @@ def validate_corpus(documents: list[SourceDocument]) -> dict:
         "total_documents": len(documents),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "checks": {},
-        "passed": True
+        "passed": True,
     }
 
     # Check 1: Row count in expected range
@@ -80,7 +87,7 @@ def validate_corpus(documents: list[SourceDocument]) -> dict:
     count_ok = min_expected <= len(documents) <= max_expected
     report["checks"]["row_count_range"] = {
         "passed": count_ok,
-        "detail": f"{len(documents)} docs (expected {min_expected}~{max_expected})"
+        "detail": f"{len(documents)} docs (expected {min_expected}~{max_expected})",
     }
     if not count_ok:
         report["passed"] = False
@@ -92,7 +99,7 @@ def validate_corpus(documents: list[SourceDocument]) -> dict:
     no_empty = len(empty_docs) == 0
     report["checks"]["no_empty_content"] = {
         "passed": no_empty,
-        "detail": f"{len(empty_docs)} documents with empty/short content"
+        "detail": f"{len(empty_docs)} documents with empty/short content",
     }
     if not no_empty:
         report["passed"] = False
@@ -101,12 +108,14 @@ def validate_corpus(documents: list[SourceDocument]) -> dict:
     # Check 3: All sources are form known DataScource enum
     # Catch typos or unexpected sources sneaking in
     valid_sources = {s.value for s in DataSource}
-    actual_sources = {d.source.value if isinstance(d.source, DataSource) else d.source for d in documents}
+    actual_sources = {
+        d.source.value if isinstance(d.source, DataSource) else d.source for d in documents
+    }
     unknown_sources = actual_sources - valid_sources
     sources_ok = len(unknown_sources) == 0
     report["checks"]["sources_in_expected_set"] = {
         "passed": sources_ok,
-        "detail": f"Sources found: {sorted(actual_sources)}. Unknown: {sorted(unknown_sources) if unknown_sources else 'None'}"
+        "detail": f"Sources found: {sorted(actual_sources)}. Unknown: {sorted(unknown_sources) if unknown_sources else 'None'}",
     }
     if not sources_ok:
         report["passed"] = False
@@ -123,7 +132,7 @@ def validate_corpus(documents: list[SourceDocument]) -> dict:
     length_ok = len(out_of_bounds) == 0
     report["checks"]["content_length_in_bounds"] = {
         "passed": length_ok,
-        "detail": f"{len(out_of_bounds)} docs outside {min_chars}~{max_chars} chars"
+        "detail": f"{len(out_of_bounds)} docs outside {min_chars}~{max_chars} chars",
     }
     if not length_ok:
         report["passed"] = False
@@ -143,14 +152,15 @@ def validate_corpus(documents: list[SourceDocument]) -> dict:
     if report["passed"]:
         logger.info(f"All {total_checks} quality checks PASSED")
     else:
-        logger.warning(f"Quality checks: {passed_count} / {total_checks} passed - review the report for details")
+        logger.warning(
+            f"Quality checks: {passed_count} / {total_checks} passed - review the report for details"
+        )
     return report
+
 
 @task(name="save-corpus")
 def save_combined_corpus(
-    documents: list[SourceDocument],
-    quality_report: dict,
-    output_dir: str = "data/processed"
+    documents: list[SourceDocument], quality_report: dict, output_dir: str = "data/processed"
 ) -> Path:
     """
     Task: Save the validated corpus as a single combined JSON file.
@@ -176,12 +186,10 @@ def save_combined_corpus(
 
     return corpus_file
 
+
 # FLOW - the whole pipeline that orchestrates the tasks
 @flow(name="felinet-data-ingestion", log_prints=True)
-def ingest_corpus(
-    test_mode: bool = False,
-    source: str | None = None
-) -> dict:
+def ingest_corpus(test_mode: bool = False, source: str | None = None) -> dict:
     """
     Main data ingestion flow.
     Runs all scrapers, validates the combined corpus, and saves everything to disk.
@@ -237,7 +245,7 @@ def ingest_corpus(
         "total_documents": len(all_documents),
         "source_breakdown": quality_report.get("source_breakdown", {}),
         "quality_passed": quality_report["passed"],
-        "output_file": str(output_file)
+        "output_file": str(output_file),
     }
 
     print("\n" + "=" * 60)
@@ -250,21 +258,20 @@ def ingest_corpus(
 
     return summary
 
+
 # CLI
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="FeliNet data ingestion pipeline")
     parser.add_argument(
-        "--test",
-        action="store_true",
-        help="Test mode: only scrape 5 articles per source"
+        "--test", action="store_true", help="Test mode: only scrape 5 articles per source"
     )
 
     parser.add_argument(
         "--source",
         choices=["cornell", "wikipedia", "cfa"],
         default=None,
-        help="Run only one scraper (default: all)"
+        help="Run only one scraper (default: all)",
     )
     args = parser.parse_args()
     logging.basicConfig(
@@ -274,4 +281,3 @@ if __name__ == "__main__":
     )
 
     result = ingest_corpus(test_mode=args.test, source=args.source)
-

@@ -1,7 +1,9 @@
 """
 Filter and clean the raw synthetic training pairs.
 """
+
 from __future__ import annotations
+
 import argparse
 import json
 import random
@@ -9,12 +11,14 @@ import re
 from collections import Counter
 from pathlib import Path
 
+
 # Quality Filters
 def is_too_short(query: str, min_length: int = 15) -> bool:
     """
     Reject questions shorter than min_length characters.
     """
     return len(query.strip()) < min_length
+
 
 def is_too_generic(query: str) -> bool:
     """
@@ -39,6 +43,7 @@ def is_too_generic(query: str) -> bool:
     query_lower = query.lower().strip()
     return any(re.match(pattern, query_lower) for pattern in generic_patterns)
 
+
 def reference_passage(query: str) -> bool:
     """
     Reject questions that explicitly reference the source passages.
@@ -46,11 +51,19 @@ def reference_passage(query: str) -> bool:
     These leak the training setup into the data and confused the model.
     """
     passage_refs = [
-        "passage", "text", "article", "paragraph", "excerpt",
-        "above", "mentioned", "stated", "described here",
+        "passage",
+        "text",
+        "article",
+        "paragraph",
+        "excerpt",
+        "above",
+        "mentioned",
+        "stated",
+        "described here",
     ]
     query_lower = query.lower().strip()
     return any(ref in query_lower for ref in passage_refs)
+
 
 def is_duplicate(query: str, seen: set[str]) -> bool:
     """
@@ -63,6 +76,7 @@ def is_duplicate(query: str, seen: set[str]) -> bool:
         return True
     seen.add(normalized)
     return False
+
 
 # Main Filter Pipeline
 def filter_training_data(
@@ -94,12 +108,11 @@ def filter_training_data(
 
     if not input_path.exists():
         raise FileNotFoundError(
-            f"Raw pairs file not found at {input_path}. "
-            f"Run generate_training_data.py first."
+            f"Raw pairs file not found at {input_path}. " f"Run generate_training_data.py first."
         )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    # Track filiter stats 
+    # Track filiter stats
     stats = Counter()
     seen_queries: set[str] = set()
     kept_pairs: list[str] = []
@@ -141,7 +154,9 @@ def filter_training_data(
     print("FILTERING RESULTS")
     print("=" * 60)
     print(f"  Total raw pairs:        {stats['total']}")
-    print(f"  Kept:                   {stats['kept']} ({stats['kept']/max(stats['total'],1)*100:.1f}%)")
+    print(
+        f"  Kept:                   {stats['kept']} ({stats['kept']/max(stats['total'],1)*100:.1f}%)"
+    )
     print(f"  Removed (too short):    {stats['removed_too_short']}")
     print(f"  Removed (too generic):  {stats['removed_too_generic']}")
     print(f"  Removed (passage ref):  {stats['removed_passage_ref']}")
@@ -163,12 +178,30 @@ def filter_training_data(
 
     return dict(stats)
 
+
 def main():
     parser = argparse.ArgumentParser(description="Filter raw training pairs for quality")
-    parser.add_argument("--min-length", type=int, default=15, help="Minimum question length in characters (default: 15)")
-    parser.add_argument("--sample", type=int, default=20, help="Number of random pairs to show for manual review (default: 20)")
-    parser.add_argument("--input", type=str, default="data/training/raw_pairs.jsonl", help="Path to raw pairs JSONL")
-    parser.add_argument("--output", type=str, default="data/training/filtered_pairs.jsonl", help="Path to save filtered pairs JSONL")
+    parser.add_argument(
+        "--min-length",
+        type=int,
+        default=15,
+        help="Minimum question length in characters (default: 15)",
+    )
+    parser.add_argument(
+        "--sample",
+        type=int,
+        default=20,
+        help="Number of random pairs to show for manual review (default: 20)",
+    )
+    parser.add_argument(
+        "--input", type=str, default="data/training/raw_pairs.jsonl", help="Path to raw pairs JSONL"
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="data/training/filtered_pairs.jsonl",
+        help="Path to save filtered pairs JSONL",
+    )
     args = parser.parse_args()
 
     filter_training_data(

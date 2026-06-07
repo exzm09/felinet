@@ -1,30 +1,25 @@
 """
 FeliNet RAG pipeline.
 """
+
 from __future__ import annotations
+
 import logging
 import os
 import time
 
 import requests as http_requests
-
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 
 from felinet.embeddings.vector_store import get_client, search
-from felinet.schemas import (
-    RAGConfig,
-    RAGResponse,
-    RetrievedChunk,
-    DataSource
-)
 from felinet.rag.guardrails import (
-    run_input_guardrails,
-    check_retrieval_confidence,
-    run_output_guardrails,
     FALLBACK_MESSAGES,
-    GuardrailAction,
+    check_retrieval_confidence,
+    run_input_guardrails,
+    run_output_guardrails,
 )
+from felinet.schemas import DataSource, RAGConfig, RAGResponse, RetrievedChunk
 
 # Load .env so API keys are available as environment variables
 load_dotenv()
@@ -37,6 +32,7 @@ _LANGFUSE_AVAILABLE = False
 if os.getenv("LANGFUSE_ENABLED", "true").lower() != "false":
     try:
         from langfuse.decorators import langfuse_context, observe
+
         _LANGFUSE_AVAILABLE = True
         logger.info("Langfuse observability enabled")
     except Exception as e:
@@ -46,25 +42,26 @@ if not _LANGFUSE_AVAILABLE:
     def observe(*args, **kwargs):
         def decorator(fn):
             return fn
+
         # Handle both @observe and @observe()
         if args and callable(args[0]):
             return args[0]
         return decorator
-    
+
     class _DummyContext:
         def get_current_trace_id(self):
             return None
+
         def update_current_observation(self, **kwargs):
             pass
+
     langfuse_context = _DummyContext()
     logger.info("Langfuse disabled - running without observability")
 
+
 # Component 1: Embed the user's query
 @observe()  # Langfuse traces automatically
-def embed_query(
-    query: str,
-    model: SentenceTransformer
-) -> list[float]:
+def embed_query(query: str, model: SentenceTransformer) -> list[float]:
     """
     Turn user's question into a vector (same space as stored chunks).
     Must be the SAME model that embedded the corpus
@@ -72,13 +69,13 @@ def embed_query(
     vector = model.encode(query, normalize_embeddings=True)
     return vector.tolist()
 
+
 # Component 2: Retrieve relevant chunks from Qdrant
+
 
 @observe()
 def retrieve_chunks(
-    query_vector: list[float],
-    config: RAGConfig,
-    qdrant_url: str = "http://localhost:6333"
+    query_vector: list[float], config: RAGConfig, qdrant_url: str = "http://localhost:6333"
 ) -> list[RetrievedChunk]:
     """
     Search Qdrant for chunks that are the most similar to the query vector.
@@ -96,14 +93,18 @@ def retrieve_chunks(
     client = get_client(url=qdrant_url)
     # For now use dense-only search
     # For naice RAG (no reranker), use top_k_reranked(5) instead of 30
-    top_k = config.retrieval.top_k_initial if not config.retrieval.use_reranker else config.retrieval.top_k_initial
+    top_k = (
+        config.retrieval.top_k_initial
+        if not config.retrieval.use_reranker
+        else config.retrieval.top_k_initial
+    )
     # Override to 5 for now
     top_k = config.retrieval.top_k_reranked
     raw_results = search(
         client=client,
         query_vector=query_vector,
         collection_name=config.collection_name,
-        top_k=top_k
+        top_k=top_k,
     )
 
     retrieved = []
@@ -114,12 +115,17 @@ def retrieve_chunks(
             source=DataSource(hit["source"]),
             score=hit["score"],
             document_title=hit.get("title"),
-            url=hit.get("url")
+            url=hit.get("url"),
         )
         retrieved.append(chunk)
 
-    logger.info(f"Retrieved {len(retrieved)} chunks (top score: {retrieved[0].score:.3f})" if retrieved else "No chunks retrieved")
+    logger.info(
+        f"Retrieved {len(retrieved)} chunks (top score: {retrieved[0].score:.3f})"
+        if retrieved
+        else "No chunks retrieved"
+    )
     return retrieved
+
 
 # Component 3: Format the context for the LLM
 @observe()
@@ -136,7 +142,7 @@ def format_context(chunks: list[RetrievedChunk]) -> str:
     """
     if not chunks:
         return "No relevant context was found for this query."
-    
+
     sections = []
     for i, chunk in enumerate(chunks, start=1):
         header = f"[{i}] Source: {chunk.source.value}"
@@ -146,14 +152,12 @@ def format_context(chunks: list[RetrievedChunk]) -> str:
 
     return "\n\n".join(sections)
 
+
 # Component 4: Generate an answer via Groq (Llama 3.3 70B)
 
+
 @observe(as_type="generation")  # tells Langfuse this is an LLM call
-def generate_answer(
-    query: str,
-    context: str,
-    config: RAGConfig
-) -> str:
+def generate_answer(query: str, context: str, config: RAGConfig) -> str:
     """
     Send the user's question + retrieved context to the LLM and get an answer back.
 
@@ -172,10 +176,7 @@ def generate_answer(
 
     # Build the message list.
     messages = [
-        {
-            "role": "system",
-            "content": config.generation.system_prompt
-        },
+        {"role": "system", "content": config.generation.system_prompt},
         {
             "role": "user",
             "content": (
@@ -183,14 +184,11 @@ def generate_answer(
                 f"Question: {query}\n\n"
                 "Answer the question using ONLY the context above. "
                 "Cite sources by thier number (e.g., [1], [2])."
-            )
-        }
+            ),
+        },
     ]
     # Update Langfuse with I/O for this generation
-    langfuse_context.update_current_observation(
-        input=messages,
-        model=config.generation.model_name
-    )
+    langfuse_context.update_current_observation(input=messages, model=config.generation.model_name)
 
     # Call Groq API directly via requests
     response = http_requests.post(
@@ -209,9 +207,7 @@ def generate_answer(
     )
 
     if response.status_code != 200:
-        raise RuntimeError(
-            f"Groq API error {response.status_code}: {response.text}"
-        )
+        raise RuntimeError(f"Groq API error {response.status_code}: {response.text}")
 
     data = response.json()
     answer = data["choices"][0]["message"]["content"]
@@ -228,7 +224,9 @@ def generate_answer(
 
     return answer
 
+
 # Component 5: The full pipeline
+
 
 @observe()
 def query_rag(
@@ -237,8 +235,8 @@ def query_rag(
     embedding_model: SentenceTransformer | None = None,
     qdrant_url: str = "http://localhost:6333",
     retrieval_mode: str = "dense",
-    bm25_index: "BM25Index | None" = None,
-    min_retrieval_score: float = 0.25
+    bm25_index=None,
+    min_retrieval_score: float = 0.25,
 ) -> RAGResponse:
     """
     End-to-end RAG: question in -> cited answer out.
@@ -260,7 +258,7 @@ def query_rag(
     Returns
     -------
     RAGResponse
-        Structured response with answer, citations, latency, and trace ID.    
+        Structured response with answer, citations, latency, and trace ID.
     """
 
     start_time = time.time()
@@ -271,11 +269,13 @@ def query_rag(
     input_results = run_input_guardrails(query)
     for result in input_results:
         langfuse_context.update_current_observation(
-            metadata={f"guardrail_{result.guardrail_name}": {
-                "action": result.action.value,
-                "reason": result.reason,
-                **result.details,
-            }}
+            metadata={
+                f"guardrail_{result.guardrail_name}": {
+                    "action": result.action.value,
+                    "reason": result.reason,
+                    **result.details,
+                }
+            }
         )
         blocked = [r for r in input_results if r.blocked]
     if blocked:
@@ -301,20 +301,22 @@ def query_rag(
     # Step 1: Load embedding model if not provided
     if embedding_model is None:
         from felinet.embeddings.embedder import load_embedding_model
+
         embedding_model = load_embedding_model(config.embedding_model)
-    
+
     # Step 2: Embed the query
     query_vector = embed_query(query, embedding_model)
 
     # Step 3: Retrieve relevant chunks
     if retrieval_mode == "hybrid" and bm25_index is not None:
         from felinet.rag.retriever import hybrid_search
+
         retrieved = hybrid_search(
             query=query,
             query_vector=query_vector,
             bm25_index=bm25_index,
             config=config,
-            qdrant_url=qdrant_url
+            qdrant_url=qdrant_url,
         )
     else:
         retrieved = retrieve_chunks(query_vector, config, qdrant_url)
@@ -322,21 +324,24 @@ def query_rag(
     # Step 3.5: Rerank id enabled
     if config.retrieval.use_reranker and retrieved:
         from felinet.rag.reranker import rerank
+
         retrieved = rerank(
             query=query,
             chunks=retrieved,
             top_k=config.retrieval.top_k_reranked,
-            model_name=config.retrieval.reranker_model
+            model_name=config.retrieval.reranker_model,
         )
 
     # Confidence gate
     confidence_result = check_retrieval_confidence(retrieved, min_score=min_retrieval_score)
     langfuse_context.update_current_observation(
-        metadata={"guardrail_retrieval_confidence": {
-            "action": confidence_result.action.value,
-            "reason": confidence_result.reason,
-            **confidence_result.details,
-        }}
+        metadata={
+            "guardrail_retrieval_confidence": {
+                "action": confidence_result.action.value,
+                "reason": confidence_result.reason,
+                **confidence_result.details,
+            }
+        }
     )
     if confidence_result.blocked:
         logger.warning(f"Confidence gate BLOCKED: {confidence_result.reason}")
@@ -350,7 +355,7 @@ def query_rag(
             config_snapshot=config,
             trace_id=langfuse_context.get_current_trace_id(),
         )
-    
+
     # Step 4: Format context
     context = format_context(retrieved)
 
@@ -361,11 +366,13 @@ def query_rag(
     output_results = run_output_guardrails(answer, context, retrieved)
     for result in output_results:
         langfuse_context.update_current_observation(
-            metadata={f"guardrail_{result.guardrail_name}": {
-                "action": result.action.value,
-                "reason": result.reason,
-                **result.details,
-            }}
+            metadata={
+                f"guardrail_{result.guardrail_name}": {
+                    "action": result.action.value,
+                    "reason": result.reason,
+                    **result.details,
+                }
+            }
         )
     blocked_output = [r for r in output_results if r.blocked]
     if blocked_output:
@@ -401,10 +408,12 @@ def query_rag(
         model_used=config.generation.model_name,
         latency_ms=latency_ms,
         config_snapshot=config,
-        trace_id=trace_id
+        trace_id=trace_id,
     )
 
-    logger.info(f"RAG query complete | latency={latency_ms:.0f} ms | "
-                f"chunks={len(retrieved)} | trace={trace_id}")
-    
+    logger.info(
+        f"RAG query complete | latency={latency_ms:.0f} ms | "
+        f"chunks={len(retrieved)} | trace={trace_id}"
+    )
+
     return response

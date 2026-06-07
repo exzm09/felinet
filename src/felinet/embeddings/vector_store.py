@@ -5,23 +5,19 @@ Handles collection creation, upserting embedded chunks, and basic search.
 """
 
 from __future__ import annotations
+
 import logging
 import uuid
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import (
-    Distance,
-    PointStruct,
-    VectorParams
-)
+from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from felinet.schemas import DocumentChunk
 
 logger = logging.getLogger(__name__)
 
-def get_client(
-        url: str = "http://localhost:6333"
-) -> QdrantClient:
+
+def get_client(url: str = "http://localhost:6333") -> QdrantClient:
     """
     Connect to a running Qdrant instance
     """
@@ -29,11 +25,12 @@ def get_client(
     logger.info(f"Connected to Qdrant at {url}")
     return client
 
+
 def create_collection(
-        client: QdrantClient,
-        collection_name: str = "felinet_chunks",
-        vector_size: int = 384,
-        recreate: bool = False
+    client: QdrantClient,
+    collection_name: str = "felinet_chunks",
+    vector_size: int = 384,
+    recreate: bool = False,
 ) -> None:
     """
     Create (or recreate) a Qdrant collection.
@@ -54,28 +51,26 @@ def create_collection(
             client.delete_collection(collection_name)
             logger.info(f"Deteled existing collection '{collection_name}'")
         except Exception:
-            pass    # collection did not exist
+            pass  # collection did not exist
 
         # Check if the collection already exists
         collections = [c.name for c in client.get_collections().collections]
         if collection_name in collections:
             logger.info(f"Collection {collection_name} already exists, skipping creation")
             return
-        
+
         client.create_collection(
             collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=vector_size,
-                distance=Distance.COSINE
-            )
+            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
         )
         logger.info(f"Created collection {collection_name} (dim={vector_size}, distance=cosine)")
 
+
 def upsert_chunks(
-        client: QdrantClient,
-        chunks: list[DocumentChunk],
-        collection_name: str = "felinet_chunks",
-        batch_size: int = 100
+    client: QdrantClient,
+    chunks: list[DocumentChunk],
+    collection_name: str = "felinet_chunks",
+    batch_size: int = 100,
 ) -> int:
     """
     Upsert embedded chunks into Qdrant.
@@ -110,14 +105,14 @@ def upsert_chunks(
                 "chunk_index": chunk.chunk_index,
                 "token_count": chunk.token_count,
                 "title": chunk.metadata.get("title", ""),
-                "url": chunk.metadata.get("url", "")
-            }
+                "url": chunk.metadata.get("url", ""),
+            },
         )
         for chunk in embedded
     ]
 
     # Upsert in batches
-    total = 0   # Total points upserted
+    total = 0  # Total points upserted
     for i in range(0, len(points), batch_size):
         batch = points[i : i + batch_size]
         client.upsert(collection_name=collection_name, points=batch)
@@ -126,11 +121,12 @@ def upsert_chunks(
     logger.info(f"Upsert complete: {total} points in {collection_name}")
     return total
 
+
 def search(
-        client: QdrantClient,
-        query_vector: list[float],
-        collection_name: str = "felinet_chunks",
-        top_k: int = 5
+    client: QdrantClient,
+    query_vector: list[float],
+    collection_name: str = "felinet_chunks",
+    top_k: int = 5,
 ) -> list[dict]:
     """
     Search for the most similar chunks to a query vector.
@@ -148,16 +144,15 @@ def search(
         Score is cosine similarity: 1.0 = perfect match, 0.0 = unrelated.
     """
     results = client.query_points(
-        collection_name=collection_name,
-        query=query_vector,
-        limit=top_k,
-        with_payload=True
+        collection_name=collection_name, query=query_vector, limit=top_k, with_payload=True
     )
     hits = []
     for point in results.points:
-        hits.append({
-            "id": point.id,
-            "score": point.score,
-            **point.payload     # spreads all key-value
-        })
+        hits.append(
+            {
+                "id": point.id,
+                "score": point.score,
+                **point.payload,  # spreads all key-value
+            }
+        )
     return hits

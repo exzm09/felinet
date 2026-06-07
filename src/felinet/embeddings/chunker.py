@@ -3,32 +3,30 @@ Chunking module for FeliNet corpus.
 Splits SourceDocuments into DocumentChunks suitable for embedding and retrieval.
 Uses recursive character splitting with token-aware sizing.
 """
+
 from __future__ import annotations
+
 import hashlib
 import logging
 
 import tiktoken
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from felinet.schemas import (
-    DocumentChunk, 
-    SourceDocument,
-    ContentType,
-    DataSource,
-    ChunkingConfig
-)
+from felinet.schemas import ChunkingConfig, DocumentChunk, SourceDocument
 
 logger = logging.getLogger(__name__)
 
-# Use the cl100k base tokenizer as a proxy for token counting. 
+# Use the cl100k base tokenizer as a proxy for token counting.
 # all-MinLM uses a difference tokenizer (BERT WordPiece), but the counts are close enough for sizing decicions.
 _ENCODER = tiktoken.get_encoding("cl100k_base")
+
 
 def count_tokens(text: str) -> int:
     """
     Return the number of tokens in text using cl100k_base.
     """
     return len(_ENCODER.encode(text))
+
 
 # Splitter factory
 def make_splitter(config: ChunkingConfig) -> RecursiveCharacterTextSplitter:
@@ -46,14 +44,11 @@ def make_splitter(config: ChunkingConfig) -> RecursiveCharacterTextSplitter:
         chunk_overlap=config.chunk_overlap,
         length_function=count_tokens,
         separators=config.separators,
-        is_separator_regex=False
+        is_separator_regex=False,
     )
 
-def _chunk_id(
-        document_id: str,
-        index: int,
-        text: str
-):
+
+def _chunk_id(document_id: str, index: int, text: str):
     """
     Deterministic chunk IS: hash of (document_id, index, text context).
     If rerun the chunker on the same corpus, we get the same IDs, making it safe to upsert into Qdrant without creating duplicates, and making evluation reproducible.
@@ -61,12 +56,13 @@ def _chunk_id(
     h = hashlib.sha256(f"{document_id}|{index}|{text}".encode("utf-8")).hexdigest()
     return f"{document_id}__{index}__{h[:12]}"
 
+
 # Core chunking logic
 PIPELINE_VERSION = "0.1.0"
 
+
 def chunk_document(
-        document: SourceDocument,
-        splitter: RecursiveCharacterTextSplitter
+    document: SourceDocument, splitter: RecursiveCharacterTextSplitter
 ) -> list[DocumentChunk]:
     """
     Split a single SourceSucoment into a list of DocumentChunks.
@@ -86,7 +82,7 @@ def chunk_document(
     chunks: list[DocumentChunk] = []
     for idx, text in enumerate(raw_chunks):
         chunk = DocumentChunk(
-            id = _chunk_id(document.id, idx, text),
+            id=_chunk_id(document.id, idx, text),
             document_id=document.id,
             source=document.source,
             content_type=document.content_type,
@@ -99,15 +95,15 @@ def chunk_document(
                 "title": document.title,
                 "url": document.url,
                 "total_chunks": len(raw_chunks),
-                **(document.metadata or {})
-            }
+                **(document.metadata or {}),
+            },
         )
         chunks.append(chunk)
     return chunks
 
+
 def chunk_corpus(
-        documents: list[SourceDocument],
-        config: ChunkingConfig | None = None
+    documents: list[SourceDocument], config: ChunkingConfig | None = None
 ) -> list[DocumentChunk]:
     """
     Chunk an entire corpus.

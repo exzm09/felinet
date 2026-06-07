@@ -1,6 +1,7 @@
 """
 Index the FeliNet corpus: load -> chunk -> embed -> upsert.
 """
+
 import sys
 import time
 from pathlib import Path
@@ -10,12 +11,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from felinet.data.loader import load_corpus
 from felinet.embeddings.chunker import chunk_corpus
 from felinet.embeddings.embedder import embed_chunks, load_embedding_model
-from felinet.embeddings.vector_store import (
-    create_collection,
-    get_client,
-    upsert_chunks
-)
+from felinet.embeddings.vector_store import create_collection, get_client, upsert_chunks
 from felinet.schemas import ChunkingConfig
+
 
 def main():
     # Load corpus
@@ -42,10 +40,11 @@ def main():
     # Upsert to Qdrant
     print("Upserting to Qdrant...")
     client = get_client()
-    create_collection(client, recreate=True)    # fresh index each run during dev
+    create_collection(client, recreate=True)  # fresh index each run during dev
     n = upsert_chunks(client, chunks)
     print(f"     -> {n} points in collection 'felinet_chunks'\n")
     print("Done! Visit http://localhost:6333/dashboard to inspect collection.")
+
 
 if __name__ == "__main__":
     main()

@@ -6,11 +6,12 @@ Scores the RAG pipeline using DeepEval's RAGAS-style metrics:
  - Contextual Precision: Are the retrieval chunks relevant to the query?
  - Contextual Recall: Did retrieval find all the information needed?
 """
+
 from __future__ import annotations
+
 import argparse
 import json
 import logging
-import os
 import time
 from pathlib import Path
 from statistics import mean
@@ -24,10 +25,11 @@ logger = logging.getLogger(__name__)
 
 # Step 1: Load the golden dataset
 
+
 def load_golen_dataset(
-        path: str | Path = "data/eval/golden_eval_dataset.json",
-        category: str | None = None,
-        limit: int | None = None
+    path: str | Path = "data/eval/golden_eval_dataset.json",
+    category: str | None = None,
+    limit: int | None = None,
 ) -> list[dict]:
     """
     Load test cases from the golden evaluation dataset.
@@ -43,7 +45,7 @@ def load_golen_dataset(
     """
     with open(path) as f:
         data = json.load(f)
-    
+
     cases = data["test_cases"]
     if category:
         cases = [c for c in cases if c["content_category"] == category]
@@ -54,12 +56,11 @@ def load_golen_dataset(
         logger.info(f"Limited to {limit} cases")
     return cases
 
+
 # Step 2: Run the RAG pipeline on each test case
 
-def run_pipeline_on_cases(
-        cases: list[dict],
-        delay_seconds: float = 12.0
-) -> list[dict]:
+
+def run_pipeline_on_cases(cases: list[dict], delay_seconds: float = 12.0) -> list[dict]:
     """
     Run the RAG pipeline on each test case and collect results
 
@@ -90,27 +91,19 @@ def run_pipeline_on_cases(
         logger.info(f"Evaluating {i + 1}/{len(cases)}: {case['query'][:60]}...")
 
         try:
-            respense = query_rag(
-                query=case["query"],
-                config=config,
-                embedding_model=model
-            )
+            respense = query_rag(query=case["query"], config=config, embedding_model=model)
 
             result = {
                 "id": case["id"],
                 "query": case["query"],
                 "expected_answer": case["expected_answer"],
                 "actual_answer": respense.answer,
-                "retrieved_contexts": [
-                    chunk.content for chunk in respense.retrieved_chunks
-                ],
+                "retrieved_contexts": [chunk.content for chunk in respense.retrieved_chunks],
                 "expected_source": case["expected_source"],
-                "actual_sources": [
-                    chunk.source.value for chunk in respense.retrieved_chunks
-                ],
+                "actual_sources": [chunk.source.value for chunk in respense.retrieved_chunks],
                 "content_type": case["content_type"],
                 "difficulty": case["difficulty"],
-                "latency_ms": respense.latency_ms
+                "latency_ms": respense.latency_ms,
             }
             results.append(result)
 
@@ -121,18 +114,20 @@ def run_pipeline_on_cases(
 
         except Exception as e:
             logger.error(f" FAILED: {e}")
-            results.append({
-                "id": case["id"],
-                "query": case["query"],
-                "expected_answer": case["expected_answer"],
-                "actual_answer": f"ERROR: {e}",
-                "retrieved_contexts": [],
-                "expected_source": case["expected_source"],
-                "actual_sources": [],
-                "content_type": case["content_type"],
-                "difficulty": case["difficulty"],
-                "latency_ms": 0
-            })
+            results.append(
+                {
+                    "id": case["id"],
+                    "query": case["query"],
+                    "expected_answer": case["expected_answer"],
+                    "actual_answer": f"ERROR: {e}",
+                    "retrieved_contexts": [],
+                    "expected_source": case["expected_source"],
+                    "actual_sources": [],
+                    "content_type": case["content_type"],
+                    "difficulty": case["difficulty"],
+                    "latency_ms": 0,
+                }
+            )
 
         # Rate limit delay (skip after last case)
         if i < len(cases) - 1:
@@ -140,7 +135,9 @@ def run_pipeline_on_cases(
             time.sleep(delay_seconds)
     return results
 
+
 # Step 3: Score results using DeepEval metrics
+
 
 def score_with_deepeval(results: list[dict]) -> dict:
     """
@@ -150,13 +147,14 @@ def score_with_deepeval(results: list[dict]) -> dict:
     This costs ~$0.01-0.05 per test case depending on context length.
     """
     from deepeval import evaluate
-    from deepeval.metrics import(
-        FaithfulnessMetric,
+    from deepeval.metrics import (
         AnswerRelevanceMetric,
         ContextualPrecisionMetric,
-        ContextualRecallMetric
+        ContextualRecallMetric,
+        FaithfulnessMetric,
     )
     from deepeval.test_case import LLMTestCase
+
     # Build DeepEval test cases
     test_cases = []
     for r in results:
@@ -166,7 +164,7 @@ def score_with_deepeval(results: list[dict]) -> dict:
             input=r["query"],
             actual_output=r["actual_answer"],
             expected_output=r["expected_answer"],
-            retrieval_context=r["retrieved_contexts"]
+            retrieval_context=r["retrieved_contexts"],
         )
         test_cases.append(tc)
 
@@ -175,7 +173,7 @@ def score_with_deepeval(results: list[dict]) -> dict:
         FaithfulnessMetric(threshold=0.7),
         AnswerRelevanceMetric(threshold=0.7),
         ContextualPrecisionMetric(threshold=0.6),
-        ContextualRecallMetric(threshold=0.6)
+        ContextualRecallMetric(threshold=0.6),
     ]
 
     # Run evaluation
@@ -183,11 +181,12 @@ def score_with_deepeval(results: list[dict]) -> dict:
     eval_result = evaluate(test_cases=test_cases, metrics=metrics)
     return eval_result
 
+
 # Step 4: Compute simple (non-LLM) metrics as a free alternative
 def score_without_llm_judge(results: list[dict]) -> dict:
     """
     Compute retrieval quality metrics that do not require an LLM judge. (Solid baseline)
-    
+
     Metrics:
         - source_accuracy: How often did retrieval return chunks from the expected scourse?
         - avg_latency_ms: Average end-to-end latency.
@@ -238,22 +237,24 @@ def score_without_llm_judge(results: list[dict]) -> dict:
             cat: {
                 "source_accuracy": d["source_hits"] / d["total"] if d["total"] else 0,
                 "avg_latency_ms": mean(d["latencies"]) if d["latencies"] else 0,
-                "count": d["total"]
+                "count": d["total"],
             }
             for cat, d in by_category.items()
         },
         "by_difficulty": {
             diff: {
                 "source_accuracy": d["source_hits"] / d["total"] if d["total"] else 0,
-                "count": d["total"]
+                "count": d["total"],
             }
             for diff, d in by_difficulty.items()
-        }
+        },
     }
 
     return scores
 
+
 # Step 5: Log results to MLflow
+
 
 def log_to_mlflow(scores: dict, run_name: str = "baseline_eval") -> None:
     """
@@ -274,21 +275,16 @@ def log_to_mlflow(scores: dict, run_name: str = "baseline_eval") -> None:
 
             # Log per-category metrics
             for cat, cat_scores in scores.get("by_category", {}).items():
-                mlflow.log_metric(
-                    f"avg_accuracy_{cat}", cat_scores["source_accuracy"]
-                )
-                mlflow.log_metric(
-                    f"avg_latency_{cat}", cat_scores["avg_latency_ms"]
-                )
+                mlflow.log_metric(f"avg_accuracy_{cat}", cat_scores["source_accuracy"])
+                mlflow.log_metric(f"avg_latency_{cat}", cat_scores["avg_latency_ms"])
 
             # Log per-difficulty metrics
             for diff, diff_scores in scores.get("by_difficulty", {}).items():
-                mlflow.log_metric(
-                    f"source_accuracy_{diff}", diff_scores["source_accuracy"]
-                )
+                mlflow.log_metric(f"source_accuracy_{diff}", diff_scores["source_accuracy"])
 
             # Log pipeline config as parameters
             from felinet.schemas import RAGConfig
+
             config = RAGConfig()
             mlflow.log_param("embedding_model", config.embedding_model)
             mlflow.log_param("top_k", config.retrieval.top_k_reranked)
@@ -301,6 +297,7 @@ def log_to_mlflow(scores: dict, run_name: str = "baseline_eval") -> None:
         logger.warning("MLflow not installed - skipping logging")
     except Exception as e:
         logger.warning(f"MLflow logging failed: {e}")
+
 
 # Step 6: Pretty print results
 def print_results(scores: dict) -> None:
@@ -334,26 +331,50 @@ def print_results(scores: dict) -> None:
 
     print("\n" + "=" * 70)
 
+
 # Main
+
 
 def main():
     parser = argparse.ArgumentParser(description="Run FeliNet RAG evaluation")
-    parser.add_argument("--limit", type=int, default=None, help="Only evaluate first N cases (default: all)")
-    parser.add_argument("--category", type=str, default=None, help="Filter by content type (disease, breed_profile, nutrition, behavior, toxicology)")
-    parser.add_argument("--dataset", type=str, default="data/eval/golden_eval_dataset.json", help="Path to golden dataset JSON")
-    parser.add_argument("--delay", type=float, default=12.0, help="Seconds between API calls (default: 12 for Groq free tier)")
-    parser.add_argument("--use-deepeval", action="store_true", help="Use DeepEval LLM-as-judge metrics (requires OPENAI_API_KEY)")
-    parser.add_argument("--run-name", type=str, default="baseline_eval", help="MLflow run name (default: baseline_eval)")
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Only evaluate first N cases (default: all)"
+    )
+    parser.add_argument(
+        "--category",
+        type=str,
+        default=None,
+        help="Filter by content type (disease, breed_profile, nutrition, behavior, toxicology)",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="data/eval/golden_eval_dataset.json",
+        help="Path to golden dataset JSON",
+    )
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=12.0,
+        help="Seconds between API calls (default: 12 for Groq free tier)",
+    )
+    parser.add_argument(
+        "--use-deepeval",
+        action="store_true",
+        help="Use DeepEval LLM-as-judge metrics (requires OPENAI_API_KEY)",
+    )
+    parser.add_argument(
+        "--run-name",
+        type=str,
+        default="baseline_eval",
+        help="MLflow run name (default: baseline_eval)",
+    )
 
     args = parser.parse_args()
 
     # Load test cases
 
-    cases = load_golen_dataset(
-        path=args.dataset,
-        category=args.category,
-        limit=args.limit
-    )
+    cases = load_golen_dataset(path=args.dataset, category=args.category, limit=args.limit)
     print(f"\nLoaded {len(cases)} test cases")
 
     # Run pipeline
@@ -382,6 +403,7 @@ def main():
         json.dump(results, f, indent=2, default=str)
 
     print(f"\nRaw results saved to {results_file}")
+
 
 if __name__ == "__main__":
     main()

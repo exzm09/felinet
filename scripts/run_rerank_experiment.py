@@ -5,13 +5,15 @@ Compares:
     2. Hybrid search with cross-encoder reranking.
     3. Hybrid + reranking + improved prompt template.
 """
+
 from __future__ import annotations
+
 import argparse
 import json
 import logging
-import os
 import time
 from statistics import mean
+
 import mlflow
 from dotenv import load_dotenv
 
@@ -20,9 +22,9 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(name)s | %(message)s")
 logger = logging.getLogger(__name__)
 
+
 def load_golden_dataset(
-        path: str = "data/eval/golden_eval_dataset.json",
-        limit: int | None = None
+    path: str = "data/eval/golden_eval_dataset.json", limit: int | None = None
 ) -> list[dict]:
     """
     Load evaluation test cases from the golden dataset.
@@ -33,6 +35,7 @@ def load_golden_dataset(
     if limit:
         cases = cases[:limit]
     return cases
+
 
 def run_single_query(query: str, pipeline_fn) -> dict | None:
     """
@@ -48,12 +51,12 @@ def run_single_query(query: str, pipeline_fn) -> dict | None:
                     "chunk_id": c.chunk_id,
                     "content": c.content,
                     "source": c.source.value if hasattr(c.source, "value") else str(c.source),
-                    "score": c.score
+                    "score": c.score,
                 }
                 for c in response.retrieved_chunks
             ],
             "latency_ms": response.latency_ms,
-            "error": None
+            "error": None,
         }
     except Exception as e:
         logger.error(f"FAILED: {e}")
@@ -62,9 +65,10 @@ def run_single_query(query: str, pipeline_fn) -> dict | None:
             "answer": "",
             "retrieved_chunks": [],
             "latency_ms": 0,
-            "error": str(e)
+            "error": str(e),
         }
-    
+
+
 def score_results(cases: list[dict], results: list[dict]) -> dict:
     """
     Score retrieval quality: source accuracy + latency stats.
@@ -74,7 +78,7 @@ def score_results(cases: list[dict], results: list[dict]) -> dict:
 
     if not successful:
         return {"source_accuracy": 0.0, "avg_latency_ms": 0, "error_rate": 1.0}
-    
+
     correct = 0
     for case, result in zip(cases, results):
         if result["error"]:
@@ -92,15 +96,16 @@ def score_results(cases: list[dict], results: list[dict]) -> dict:
         "p95_latency_ms": sorted(latencies)[int(len(latencies) * 0.95)] if latencies else 0,
         "total_cases": len(results),
         "successful_cases": len(successful),
-        "error_rate": len(errors) / len(results) if results else 0
+        "error_rate": len(errors) / len(results) if results else 0,
     }
 
+
 def run_experiment(
-        cases: list[dict],
-        use_reranker: bool = False,
-        use_improved_prompt: bool = False,
-        chunks_path: str = "data/processed/felinet_chunks.json",
-        delay: float = 12.0
+    cases: list[dict],
+    use_reranker: bool = False,
+    use_improved_prompt: bool = False,
+    chunks_path: str = "data/processed/felinet_chunks.json",
+    delay: float = 12.0,
 ) -> dict:
     """
     Run evaluation with configurable reranking and prompt settings.
@@ -111,10 +116,10 @@ def run_experiment(
     use_improved_prompt : bool
         If True, use the upgraded prompt template with few-shot examples.
     """
-    from felinet.schemas import RAGConfig
+    from felinet.embeddings.embedder import load_embedding_model
     from felinet.rag.pipeline import query_rag
     from felinet.rag.retriever import BM25Index
-    from felinet.embeddings.embedder import load_embedding_model
+    from felinet.schemas import RAGConfig
 
     config = RAGConfig()
     config.retrieval.use_reranker = use_reranker
@@ -131,8 +136,9 @@ def run_experiment(
             config=config,
             embedding_model=emb_model,
             retrieval_mode="hybrid",
-            bm25_index=bm25_index
+            bm25_index=bm25_index,
         )
+
     results = []
     for i, case in enumerate(cases):
         logger.info(f"[{i + 1}/{len(cases)}] {case['query'][:60]}...")
@@ -143,6 +149,7 @@ def run_experiment(
 
     scores = score_results(cases, results)
     return {**scores, "use_reranker": use_reranker, "use_improved_prompt": use_improved_prompt}
+
 
 IMPROVED_SYSTEM_PROMPT = """You are FeliNet, a feline health and breed knowledge assistant.
 
@@ -160,14 +167,23 @@ Question: What are the symptoms of kidney disease in cats?
 Good answer: Common signs of chronic kidney disease (CKD) in cats include increased thirst and urination, weight loss, decreased appetite, and vomiting [1]. As the disease progresses, cats may develop mouth ulcers, bad breath, and lethargy [1][2]. CKD is more common in older cats and is often detected through blood work showing elevated BUN and creatinine levels [2]. Consult your veterinarian for advice specific to your cat.
 """
 
+
 def main():
     parser = argparse.ArgumentParser(description="Run reranking experiments")
     parser.add_argument("--limit", type=int, default=None, help="Limit test cases")
     parser.add_argument("--delay", type=float, default=12.0, help="Seconds between API calls")
-    parser.add_argument("--chunks", type=str, default="data/processed/felinet_chunks.json", help="Path to chunked corpus JSON")
-    parser.add_argument("--dataset", type=str,
+    parser.add_argument(
+        "--chunks",
+        type=str,
+        default="data/processed/felinet_chunks.json",
+        help="Path to chunked corpus JSON",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
         default="data/eval/golden_eval_dataset.json",
-        help="Path to golden evaluation dataset")
+        help="Path to golden evaluation dataset",
+    )
     args = parser.parse_args()
 
     cases = load_golden_dataset(args.dataset, args.limit)
@@ -186,7 +202,13 @@ def main():
         mlflow.log_param("use_improved_prompt", False)
         mlflow.log_param("num_test_cases", len(cases))
 
-        scores_1 = run_experiment(cases, use_reranker=False, use_improved_prompt=False, chunks_path=args.chunks, delay=args.delay)
+        scores_1 = run_experiment(
+            cases,
+            use_reranker=False,
+            use_improved_prompt=False,
+            chunks_path=args.chunks,
+            delay=args.delay,
+        )
 
         mlflow.log_metric("source_accuracy", scores_1["source_accuracy"])
         mlflow.log_metric("avg_latency_ms", scores_1["avg_latency_ms"])
@@ -208,8 +230,11 @@ def main():
         mlflow.log_param("num_test_cases", len(cases))
 
         scores_2 = run_experiment(
-            cases, use_reranker=True, use_improved_prompt=False,
-            chunks_path=args.chunks, delay=args.delay,
+            cases,
+            use_reranker=True,
+            use_improved_prompt=False,
+            chunks_path=args.chunks,
+            delay=args.delay,
         )
 
         mlflow.log_metric("source_accuracy", scores_2["source_accuracy"])
@@ -232,8 +257,11 @@ def main():
         mlflow.log_param("num_test_cases", len(cases))
 
         scores_3 = run_experiment(
-            cases, use_reranker=True, use_improved_prompt=True,
-            chunks_path=args.chunks, delay=args.delay,
+            cases,
+            use_reranker=True,
+            use_improved_prompt=True,
+            chunks_path=args.chunks,
+            delay=args.delay,
         )
 
         mlflow.log_metric("source_accuracy", scores_3["source_accuracy"])
@@ -249,13 +277,19 @@ def main():
     print("=" * 70)
     print(f"\n  {'Configuration':<45} {'Accuracy':>10} {'Latency':>10}")
     print(f"  {'-'*45} {'-'*10} {'-'*10}")
-    print(f"  {'Hybrid (no reranking)':<45} {scores_1['source_accuracy']:>9.1%} {scores_1['avg_latency_ms']:>8.0f}ms")
-    print(f"  {'Hybrid + reranking':<45} {scores_2['source_accuracy']:>9.1%} {scores_2['avg_latency_ms']:>8.0f}ms")
-    print(f"  {'Hybrid + reranking + improved prompt':<45} {scores_3['source_accuracy']:>9.1%} {scores_3['avg_latency_ms']:>8.0f}ms")
+    print(
+        f"  {'Hybrid (no reranking)':<45} {scores_1['source_accuracy']:>9.1%} {scores_1['avg_latency_ms']:>8.0f}ms"
+    )
+    print(
+        f"  {'Hybrid + reranking':<45} {scores_2['source_accuracy']:>9.1%} {scores_2['avg_latency_ms']:>8.0f}ms"
+    )
+    print(
+        f"  {'Hybrid + reranking + improved prompt':<45} {scores_3['source_accuracy']:>9.1%} {scores_3['avg_latency_ms']:>8.0f}ms"
+    )
 
     improvement = scores_3["source_accuracy"] - scores_1["source_accuracy"]
     print(f"Overall improvement (baseline -> best): {improvement:+.1%}")
-    print(f"All experiments complete. (Run `mlflow ui --port 5000` to compare)")
+    print("All experiments complete. (Run `mlflow ui --port 5000` to compare)")
 
 
 if __name__ == "__main__":

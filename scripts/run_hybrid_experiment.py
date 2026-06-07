@@ -5,12 +5,13 @@ Hybrid Search Experiment Runner
 3. Optionally runs a grid search over alph (BM25 weight vs dense weight)
 4. Logs everything to MLflow for side-by-side comparison
 """
+
 from __future__ import annotations
+
 import argparse
-import logging
 import json
+import logging
 import time
-from pathlib import Path
 from statistics import mean
 
 import mlflow
@@ -21,8 +22,9 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(name)s | %(message)s")
 logger = logging.getLogger(__name__)
 
+
 def load_golden_dataset(
-        path: str = "data/golden_eval_dataset.json",
+    path: str = "data/golden_eval_dataset.json",
     limit: int | None = None,
 ) -> list[dict]:
     """
@@ -34,6 +36,7 @@ def load_golden_dataset(
     if limit:
         cases = cases[:limit]
     return cases
+
 
 def run_single_query(query: str, pipeline_fn) -> dict | None:
     """
@@ -49,12 +52,12 @@ def run_single_query(query: str, pipeline_fn) -> dict | None:
                     "chunk_id": c.chunk_id,
                     "content": c.content,
                     "source": c.source.value if hasattr(c.source, "value") else str(c.source),
-                    "score": c.score
+                    "score": c.score,
                 }
                 for c in response.retrieved_chunks
             ],
             "latency_ms": response.latency_ms,
-            "error": None
+            "error": None,
         }
     except Exception as e:
         logger.error(f" FAILED: {e}")
@@ -65,7 +68,8 @@ def run_single_query(query: str, pipeline_fn) -> dict | None:
             "latency_ms": 0,
             "error": str(e),
         }
-    
+
+
 def score_results(cases: list[dict], results: list[dict]) -> dict:
     """
     Score retrieval quality by checking if the expected source was retrieved.
@@ -74,12 +78,8 @@ def score_results(cases: list[dict], results: list[dict]) -> dict:
     errors = [r for r in results if r["error"] is not None]
 
     if not successful:
-        return {
-            "source_accuracy": 0.0,
-            "avg_latency_ms": 0,
-            "error_rate": 1.0
-        }
-    
+        return {"source_accuracy": 0.0, "avg_latency_ms": 0, "error_rate": 1.0}
+
     # Check if retrieved from the expected source
     correct = 0
     for case, result in zip(cases, results):
@@ -98,15 +98,16 @@ def score_results(cases: list[dict], results: list[dict]) -> dict:
         "p95_latency_ms": sorted(latencies)[int(len(latencies) * 0.95)] if latencies else 0,
         "total_cases": len(results),
         "successful_cases": len(successful),
-        "error_rate": len(errors) / len(results) if results else 0
+        "error_rate": len(errors) / len(results) if results else 0,
     }
 
+
 def run_experiment(
-        cases: list[dict],
-        mode: str,
-        config_overrides: dict | None = None,
-        chunks_path: str = "data/processed/felinet_chunks.json",
-        delay: float = 12.0
+    cases: list[dict],
+    mode: str,
+    config_overrides: dict | None = None,
+    chunks_path: str = "data/processed/felinet_chunks.json",
+    delay: float = 12.0,
 ) -> dict:
     """
     Run the evaluation in either dense or hybrid mode.
@@ -124,9 +125,9 @@ def run_experiment(
     delay : float
         Seconds between Groq API calls to respect rate limits.
     """
-    from felinet.schemas import RAGConfig
-    from felinet.rag.pipeline import query_rag
     from felinet.embeddings.embedder import load_embedding_model
+    from felinet.rag.pipeline import query_rag
+    from felinet.schemas import RAGConfig
 
     # Build config with any overrides
     config = RAGConfig()
@@ -143,6 +144,7 @@ def run_experiment(
     bm25_index = None
     if mode == "hybrid":
         from felinet.rag.retriever import BM25Index
+
         bm25_index = BM25Index.from_corpus(chunks_path)
 
     # Define the pipeline function
@@ -152,9 +154,9 @@ def run_experiment(
             config=config,
             embedding_model=emb_model,
             retrieval_mode=mode,
-            bm25_index=bm25_index
+            bm25_index=bm25_index,
         )
-    
+
     # Run all cases
     results = []
     for i, case in enumerate(cases):
@@ -169,15 +171,24 @@ def run_experiment(
     scores = score_results(cases, results)
     return {**scores, "mode": mode}
 
+
 def main():
     parser = argparse.ArgumentParser(description="Run hybrid search experiments")
     parser.add_argument("--limit", type=int, default=None, help="Limit test cases")
     parser.add_argument("--delay", type=float, default=12.0, help="Seconds between API calls")
     parser.add_argument("--grid-search", action="store_true", help="Run alpha grid search")
-    parser.add_argument("--chunks", type=str, default="data/processed/felinet_chunks.json", help="Path to chunked corpus JSON")
-    parser.add_argument("--dataset", type=str,
+    parser.add_argument(
+        "--chunks",
+        type=str,
+        default="data/processed/felinet_chunks.json",
+        help="Path to chunked corpus JSON",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
         default="data/eval/golden_eval_dataset.json",
-        help="Path to golden evaluation dataset")
+        help="Path to golden evaluation dataset",
+    )
     args = parser.parse_args()
 
     cases = load_golden_dataset(args.dataset, args.limit)
@@ -217,9 +228,7 @@ def main():
         mlflow.log_param("num_test_cases", len(cases))
 
         hybrid_scores = run_experiment(
-            cases, mode="hybrid",
-            chunks_path=args.chunks,
-            delay=args.delay
+            cases, mode="hybrid", chunks_path=args.chunks, delay=args.delay
         )
 
         mlflow.log_metric("source_accuracy", hybrid_scores["source_accuracy"])
@@ -259,13 +268,11 @@ def main():
                 mlflow.log_param("num_test_cases", len(cases))
 
                 scores = run_experiment(
-                    cases, mode="hybrid",
-                    config_overrides={
-                        "bm25_weight": alpha,
-                        "dense_weight": 1 - alpha
-                    },
+                    cases,
+                    mode="hybrid",
+                    config_overrides={"bm25_weight": alpha, "dense_weight": 1 - alpha},
                     chunks_path=args.chunks,
-                    delay=args.delay
+                    delay=args.delay,
                 )
 
                 mlflow.log_metric("source_accuracy", scores["source_accuracy"])

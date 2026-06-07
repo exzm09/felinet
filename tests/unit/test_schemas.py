@@ -3,23 +3,25 @@
 import pytest
 from pydantic import ValidationError
 
-from felinet.schemas import(
+from felinet.schemas import (
     ChunkingConfig,
     ContentType,
     DataSource,
     DocumentChunk,
+    GenerationConfig,
     RAGConfig,
     RAGResponse,
+    RetrievalConfig,
     RetrievedChunk,
     SourceDocument,
-    GenerationConfig,
-    RetrievalConfig
 )
+
 
 class TestSourceDocument:
     """
     Tests for the SourceDocument model (raw docs before chunking)
     """
+
     def test_valid_document(self, sample_source_document):
         """
         A well-formed doc should be accepted without errors
@@ -58,8 +60,8 @@ class TestSourceDocument:
                 source=DataSource.CORNELL,
                 url="https://example.com",
                 title="Short",
-                content="Too short", # Below min_length=50
-                content_type=ContentType.ARTICLE
+                content="Too short",  # Below min_length=50
+                content_type=ContentType.ARTICLE,
             )
 
     def test_invalid_source_rejected(self):
@@ -91,12 +93,11 @@ class TestSourceDocument:
         assert doc.metadata == {}
 
 
-    
-
 class TestDocumentChunk:
     """
     Tests for the DocumentChunk model (chunks stored in vector DB).
     """
+
     def test_valid_chunk(self, sample_chunk):
         """
         A well-formed chunk should be accepted.
@@ -170,6 +171,7 @@ class TestDocumentChunk:
                 pipeline_version="0.1.0",
             )
 
+
 class TestRAGConfig:
     """
     Tests for the pipeline configuration models.
@@ -236,6 +238,7 @@ class TestRAGConfig:
         config.chunking.chunk_size = 256
         assert config.embedding_model == "custom-model"
 
+
 class TestRAGResponses:
     def test_valid_response(self):
         response = RAGResponse(
@@ -253,10 +256,11 @@ class TestRAGResponses:
             query="What is FLUTD in cats?",
             model_used="llama-3.3-70b-versatile",
             latency_ms=1250.5,
-            config_snapshot=RAGConfig()
+            config_snapshot=RAGConfig(),
         )
         assert len(response.retrieved_chunks) == 1
         assert response.latency_ms > 0
+
 
 class TestRetrievedChunk:
     """

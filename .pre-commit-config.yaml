@@ -1,0 +1,45 @@
+# Pre-commit hooks - runs automatically before every git commit
+#
+# WHAT THIS DOES:
+#   Before commit, these checks run automatically:
+#   1. ruff: lints your Python code (catches bugs, bad style)
+#   2. ruff-format: formats your code consistently
+#   3. Basic file checks: trailing whitespace, merge conflicts, etc.
+
+
+repos:
+  # Ruff: fast Python linter + formatter
+  # Replaces both flake8 (linting) and black (formatting)
+  # in a single, much faster tool.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      # Linting: catches unused imports, undefined names, style issues
+      - id: ruff
+        args: [
+          "--select", "E,F,I",    # E=style, F=bugs, I=import sorting
+          "--ignore", "E501",      # Skip line-length (too noisy)
+          "--fix",                 # Auto-fix what it can
+        ]
+      # Formatting: consistent code style (like black, but faster)
+      - id: ruff-format
+
+  # Basic file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # Remove trailing whitespace from lines
+      - id: trailing-whitespace
+      # Ensure files end with a newline
+      - id: end-of-file-fixer
+      # Catch accidentally committed merge conflict markers
+      - id: check-merge-conflict
+      # Validate YAML files (configs, workflows)
+      - id: check-yaml
+      # Validate JSON files
+      - id: check-json
+        # Exclude data files that might be large
+        exclude: ^data/
+      # Prevent giant files from being committed
+      - id: check-added-large-files
+        args: ['--maxkb=1000']  # Block files >1MB

@@ -1,15 +1,18 @@
 """
 FeliNet test fixtures - shared helpers used across all test files.
 """
+
 import pytest
+
 from felinet.schemas import (
-    SourceDocument,
-    DocumentChunk,
-    DataSource,
     ContentType,
+    DataSource,
+    DocumentChunk,
     RAGConfig,
     RetrievedChunk,
+    SourceDocument,
 )
+
 
 @pytest.fixture
 def sample_source_document():
@@ -27,6 +30,7 @@ def sample_source_document():
         content_type=ContentType.DISEASE,
         metadata={"category": "nephrology"},
     )
+
 
 @pytest.fixture
 def sample_chunk():

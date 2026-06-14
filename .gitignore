@@ -29,9 +29,11 @@ mlartifacts/
 /data/raw/*
 /data/processed/*
 /data/embeddings/*
+/data/training/*
 !/data/raw/.gitkeep
 !/data/processed/.gitkeep
 !/data/embeddings/.gitkeep
+!/data/training/.gitkeep
 
 # Qdrant local storage
 qdrant_storage/
@@ -47,6 +49,13 @@ Thumbs.db
 .pytest_cache/
 htmlcov/
 .coverage
-/data
 
-qdrant_storage/
+data/monitoring/*.jsonl
+data/monitoring/*.npy
+data/monitoring/*.log
+data/monitoring/*.html
+!data/monitoring/.gitkeep
+
+# DeepEval local cache & telemetry
+.deepeval/
+.deepeval_telemetry.txt

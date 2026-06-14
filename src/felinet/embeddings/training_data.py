@@ -131,7 +131,7 @@ def load_checkpoint(path: str) -> set[str]:
     """
     path = Path(path)
     if path.exists():
-        with open(path, "r") as f:
+        with open(path) as f:
             data = json.load(f)
         return set(data.get("completed_chunk_ids", []))
     return set()

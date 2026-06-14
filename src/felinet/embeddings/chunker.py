@@ -53,7 +53,7 @@ def _chunk_id(document_id: str, index: int, text: str):
     Deterministic chunk IS: hash of (document_id, index, text context).
     If rerun the chunker on the same corpus, we get the same IDs, making it safe to upsert into Qdrant without creating duplicates, and making evluation reproducible.
     """
-    h = hashlib.sha256(f"{document_id}|{index}|{text}".encode("utf-8")).hexdigest()
+    h = hashlib.sha256(f"{document_id}|{index}|{text}".encode()).hexdigest()
     return f"{document_id}__{index}__{h[:12]}"
 
 

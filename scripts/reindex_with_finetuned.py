@@ -135,7 +135,7 @@ def reindex_corpus(
     for i, result in enumerate(results):
         score = result.get("score", 0)
         text = result.get("content", "")[:100]
-        print(f"  #{i+1} (score={score:.4f}): {text}...")
+        print(f"  #{i + 1} (score={score:.4f}): {text}...")
     print("=" * 60)
 
     return {

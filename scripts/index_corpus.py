@@ -26,7 +26,9 @@ def main():
     config = ChunkingConfig()
     chunks = chunk_corpus(documents, config)
     token_counts = [c.token_count for c in chunks]
-    print(f"    -> {len(chunks)} chunks (mean {sum(token_counts)/len(token_counts):.0f} tokens)\n")
+    print(
+        f"    -> {len(chunks)} chunks (mean {sum(token_counts) / len(token_counts):.0f} tokens)\n"
+    )
 
     # Embed
     print("Embedding...")

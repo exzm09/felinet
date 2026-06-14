@@ -55,6 +55,9 @@ if not _LANGFUSE_AVAILABLE:
         def update_current_observation(self, **kwargs):
             pass
 
+        def score_current_trace(self, **kwargs):
+            pass
+
     langfuse_context = _DummyContext()
     logger.info("Langfuse disabled - running without observability")
 
@@ -286,7 +289,7 @@ def query_rag(
             "prompt_injection": "prompt_injection",
             "pii_filter": "pii_detected",
         }.get(blocker.guardrail_name, "off_topic")
-
+        langfuse_context.score_current_trace(name="guardrail_blocked", value=1.0)
         latency_ms = (time.time() - start_time) * 1000
         return RAGResponse(
             answer=FALLBACK_MESSAGES[fallback_key],
@@ -297,6 +300,9 @@ def query_rag(
             config_snapshot=config,
             trace_id=langfuse_context.get_current_trace_id(),
         )
+
+    from felinet.monitoring.drift import query_centroid_similarity
+    from felinet.monitoring.query_logger import log_query
 
     # Step 1: Load embedding model if not provided
     if embedding_model is None:
@@ -320,6 +326,7 @@ def query_rag(
         )
     else:
         retrieved = retrieve_chunks(query_vector, config, qdrant_url)
+    log_query(query, extra={"corpus_similarity": query_centroid_similarity(query_vector)})
 
     # Step 3.5: Rerank is enabled
     if config.retrieval.use_reranker and retrieved:
@@ -345,6 +352,7 @@ def query_rag(
     )
     if confidence_result.blocked:
         logger.warning(f"Confidence gate BLOCKED: {confidence_result.reason}")
+        langfuse_context.score_current_trace(name="guardrail_blocked", value=1.0)
         latency_ms = (time.time() - start_time) * 1000
         return RAGResponse(
             answer=FALLBACK_MESSAGES["low_confidence"],
@@ -382,7 +390,7 @@ def query_rag(
             "hallucination_check": "hallucination",
             "response_length": "too_long",
         }.get(blocker.guardrail_name, "hallucination")
-
+        langfuse_context.score_current_trace(name="guardrail_blocked", value=1.0)
         latency_ms = (time.time() - start_time) * 1000
         return RAGResponse(
             answer=FALLBACK_MESSAGES[fallback_key],
@@ -415,5 +423,5 @@ def query_rag(
         f"RAG query complete | latency={latency_ms:.0f} ms | "
         f"chunks={len(retrieved)} | trace={trace_id}"
     )
-
+    langfuse_context.score_current_trace(name="guardrail_blocked", value=0.0)
     return response

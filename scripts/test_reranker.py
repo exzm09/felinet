@@ -88,8 +88,8 @@ def main():
     _ = model.predict(dummy_pairs)
     batch_time = time.time() - start
 
-    print(f"\n  Reranked 30 chunks in {batch_time:.3f}s ({batch_time*1000:.0f}ms)")
-    print(f"  Per chunk: {batch_time/30*1000:.1f}ms")
+    print(f"\n  Reranked 30 chunks in {batch_time:.3f}s ({batch_time * 1000:.0f}ms)")
+    print(f"  Per chunk: {batch_time / 30 * 1000:.1f}ms")
     print("\n  This is the overhead added to each query.")
     print("  For comparison, Groq API call takes ~1000-1500ms.")
 

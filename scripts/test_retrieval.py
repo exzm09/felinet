@@ -25,9 +25,9 @@ def main():
     client = get_client()
 
     for query in TEST_QUERIES:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"QUERY: {query}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         # Embed the query with the same model used for indexing
         query_vector = model.encode(query, normalize_embeddings=True).tolist()

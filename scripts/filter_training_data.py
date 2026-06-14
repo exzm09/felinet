@@ -108,7 +108,7 @@ def filter_training_data(
 
     if not input_path.exists():
         raise FileNotFoundError(
-            f"Raw pairs file not found at {input_path}. " f"Run generate_training_data.py first."
+            f"Raw pairs file not found at {input_path}. Run generate_training_data.py first."
         )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -117,7 +117,7 @@ def filter_training_data(
     seen_queries: set[str] = set()
     kept_pairs: list[str] = []
 
-    with open(input_path, "r", encoding="utf-8") as f:
+    with open(input_path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -155,7 +155,7 @@ def filter_training_data(
     print("=" * 60)
     print(f"  Total raw pairs:        {stats['total']}")
     print(
-        f"  Kept:                   {stats['kept']} ({stats['kept']/max(stats['total'],1)*100:.1f}%)"
+        f"  Kept:                   {stats['kept']} ({stats['kept'] / max(stats['total'], 1) * 100:.1f}%)"
     )
     print(f"  Removed (too short):    {stats['removed_too_short']}")
     print(f"  Removed (too generic):  {stats['removed_too_generic']}")

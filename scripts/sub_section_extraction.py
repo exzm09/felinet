@@ -40,4 +40,4 @@ print("=== Section headings on the page ===")
 for tag in soup.find_all(["h2", "h3", "h4"]):
     text = tag.get_text(strip=True)
     has_link = tag.find("a") is not None
-    print(f'  {"[LINKED]" if has_link else "[TEXT]  "} {tag.name}: {text[:60]}')
+    print(f"  {'[LINKED]' if has_link else '[TEXT]  '} {tag.name}: {text[:60]}")

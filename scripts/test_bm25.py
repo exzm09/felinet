@@ -59,7 +59,7 @@ def main():
 
         for i, r in enumerate(results):
             preview = r["content"][:100].replace("\n", " ")
-            print(f"   [{i+1}] score={r['score']:.2f} | source={r['source']}")
+            print(f"   [{i + 1}] score={r['score']:.2f} | source={r['source']}")
             print(f"       {preview}...")
 
     print(f"\n{'=' * 70}")

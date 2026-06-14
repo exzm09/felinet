@@ -76,7 +76,7 @@ def main():
 
     # Summary
     if output_path.exists():
-        with open(output_path, "r", encoding="utf-8") as f:
+        with open(output_path, encoding="utf-8") as f:
             total_lines = sum(1 for _ in f)
         print(f"\nTotal training pairs in {output_path}: {total_lines}")
     print(f"Total time: {elapsed / 60:.1f} minutes")

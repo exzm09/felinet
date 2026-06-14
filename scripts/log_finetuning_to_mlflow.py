@@ -36,7 +36,7 @@ def log_finetuning_experiment(
     if not results_path.exists():
         raise FileNotFoundError(f"Results file not found at {results_path}. ")
 
-    with open(results_path, "r") as f:
+    with open(results_path) as f:
         results = json.load(f)
 
     # Set or create the experiment

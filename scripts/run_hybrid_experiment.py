@@ -258,7 +258,7 @@ def main():
         # alpha = BM25 weight, dense weight = 1 - alpha
         alphas = [0.3, 0.5, 0.7]
         for alpha in alphas:
-            print(f"\n  --- Alpha={alpha} (BM25={alpha}, Dense={1-alpha}) ---")
+            print(f"\n  --- Alpha={alpha} (BM25={alpha}, Dense={1 - alpha}) ---")
             with mlflow.start_run(run_name=f"week7_hybrid_search_{alpha}"):
                 mlflow.log_param("retrieval_mode", "hybrid")
                 mlflow.log_param("bm25_weight", alpha)

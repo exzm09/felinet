@@ -54,7 +54,7 @@ class BM25Index:
         self.chunk_metadata = chunk_metadata
 
     @classmethod
-    def from_corpus(cls, corpus_path: str | Path) -> "BM25Index":
+    def from_corpus(cls, corpus_path: str | Path) -> BM25Index:
         """
         Build a BM25 index from chunked corpus JSON
         Parameters

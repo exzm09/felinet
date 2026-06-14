@@ -276,7 +276,7 @@ def main():
     print("COMPARISON SUMMARY")
     print("=" * 70)
     print(f"\n  {'Configuration':<45} {'Accuracy':>10} {'Latency':>10}")
-    print(f"  {'-'*45} {'-'*10} {'-'*10}")
+    print(f"  {'-' * 45} {'-' * 10} {'-' * 10}")
     print(
         f"  {'Hybrid (no reranking)':<45} {scores_1['source_accuracy']:>9.1%} {scores_1['avg_latency_ms']:>8.0f}ms"
     )

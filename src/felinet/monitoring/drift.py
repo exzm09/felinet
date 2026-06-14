@@ -110,3 +110,31 @@ def batch_drift_report(reference_embeddings, current_embeddings) -> dict:
         "n_current": len(cur),
         "drift_detected": bool(centroid_drift > 0.1 or psi > 0.25),
     }
+
+
+def evidently_html_report(
+    reference_embeddings,
+    current_embeddings,
+    out_path: str = "data/monitoring/drift_report.html",
+) -> str:
+    """
+    Generate an HTML drift report. Written for Evidently 0.7.x (current).
+    """
+    import pandas as pd
+
+    ref = np.asarray(reference_embeddings, dtype=np.float32)
+    cur = np.asarray(current_embeddings, dtype=np.float32)
+    cols = [f"dim_{i}" for i in range(ref.shape[1])]
+    ref_df = pd.DataFrame(ref, columns=cols)
+    cur_df = pd.DataFrame(cur, columns=cols)
+
+    from evidently import Report
+    from evidently.presets import DataDriftPreset
+
+    report = Report([DataDriftPreset()])
+    # (current, reference)
+    result = report.run(cur_df, ref_df)
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    result.save_html(out_path)
+    logger.info(f"Saved Evidently drift report to {out_path}")
+    return out_path

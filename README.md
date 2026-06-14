@@ -69,7 +69,7 @@ pytest tests/
 - [X] Week 10: Embedding fine-tuning
 - [X] Week 11: Guardrails
 - [X] Week 12: CI/CD quality gates
-- [ ] Week 13: Drift detection + monitoring
+- [X] Week 13: Drift detection + monitoring
 - [ ] Week 14: A/B testing + feedback loops
 - [ ] Week 15: Frontend + deployment
 - [ ] Week 16: Documentation + polish

@@ -241,7 +241,7 @@ class TestHallucinationCheck:
         """
         Answer without ANY citations should be blocked.
         """
-        answer = "Cats should eat exactly 250 calories per day " "and drink 8 glasses of water."
+        answer = "Cats should eat exactly 250 calories per day and drink 8 glasses of water."
         context = "[1] Source: cornell\nCat caloric needs vary by weight."
         chunks = [FakeChunk(0.5)]
         result = check_hallucination(answer, context, chunks)

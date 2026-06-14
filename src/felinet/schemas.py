@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 
 # A fixed list of allowed options catching mistakes before running code
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -65,9 +64,9 @@ class DocumentChunk(BaseModel):
     chunk_index: int = Field(..., ge=0, description="Position within the parent document")
     token_count: int = Field(..., gt=0, description="Number of tokens in the chunk")
     # Hold as None when embedding not avaliable
-    embedding: Optional[list[float]] = Field(None, description="Vector embedding")
+    embedding: list[float] | None = Field(None, description="Vector embedding")
     # Avoiding embedding drift
-    embedding_model: Optional[str] = Field(None, description="Model used to generate embedding")
+    embedding_model: str | None = Field(None, description="Model used to generate embedding")
     pipeline_version: str = Field(..., description="Pipeline version that produced this chunk")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: dict = Field(default_factory=dict)
@@ -132,7 +131,7 @@ class RAGConfig(BaseModel):
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
     embedding_model: str = Field(
-        "all-MiniLM-L6-v2", description="Sentence-transformer model for embeddings"
+        "models/felinet-embedding-v1", description="Sentence-transformer model for embeddings"
     )
     collection_name: str = Field("felinet_chunks", description="Qdrant collection name")
 
@@ -145,8 +144,8 @@ class RetrievedChunk(BaseModel):
     content: str
     source: DataSource
     score: float = Field(..., description="Relevance score")
-    document_title: Optional[str] = None
-    url: Optional[str] = None
+    document_title: str | None = None
+    url: str | None = None
 
 
 class RAGResponse(BaseModel):
@@ -161,4 +160,4 @@ class RAGResponse(BaseModel):
     latency_ms: float = Field(..., ge=0, description="End-to-end latency in milliseconds")
     config_snapshot: RAGConfig = Field(..., description="Pipeline config used for the query")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    trace_id: Optional[str] = Field(None, description="Langfuse trace ID for observability")
+    trace_id: str | None = Field(None, description="Langfuse trace ID for observability")

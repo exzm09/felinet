@@ -64,7 +64,7 @@ FALLBACK_MESSAGES = {
         "Could you rephrase your question about cats?"
     ),
     "prompt_injection": (
-        "I wasn't able to process that query. Could you rephrase your " "question about cats?"
+        "I wasn't able to process that query. Could you rephrase your question about cats?"
     ),
     "pii_detected": (
         "It looks like your message contains personal information "

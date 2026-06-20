@@ -10,6 +10,7 @@ For each golden question run BOTH variants, score each answer with DeepEval
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -52,7 +53,7 @@ def score_answer(question: str, response) -> dict:
     return {"faithfulness": faith.score, "relevancy": rel.score}
 
 
-def main(limit: int = 10):  # START SMALL. Bump to 50 (None = all) once it works.
+def main(limit: int = 10):
     questions = load_questions(limit=limit)
     model = load_embedding_model(RAGConfig().embedding_model)
 
@@ -65,8 +66,12 @@ def main(limit: int = 10):  # START SMALL. Bump to 50 (None = all) once it works
         for variant in ("A", "B"):
             config = make_variant_config(variant)
             for q in questions:
-                resp = query_rag(query=q, config=config, embedding_model=model)
-                scores = score_answer(q, resp)
+                try:
+                    resp = with_retry(query_rag, query=q, config=config, embedding_model=model)
+                    scores = with_retry(score_answer, q, resp)
+                except Exception as e:
+                    print(f"  !! SKIPPING [{variant}] {q[:40]}... after retries: {e}")
+                    continue
                 row = {
                     "variant": variant,
                     "question": q,
@@ -94,5 +99,18 @@ def main(limit: int = 10):  # START SMALL. Bump to 50 (None = all) once it works
     print(f"Now run:  python scripts/analyze_ab_test.py {results_path} faithfulness")
 
 
+def with_retry(fn, *args, attempts=4, base_delay=2.0, **kwargs):
+    """Call fn; on any failure, wait and retry with growing delays (2s, 4s, 8s)."""
+    for i in range(attempts):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            if i == attempts - 1:
+                raise  # out of retries - let it bubble up
+            wait = base_delay * (2**i)
+            print(f"  ! {fn.__name__} failed ({type(e).__name__}); retry {i+1} in {wait:.0f}s")
+            time.sleep(wait)
+
+
 if __name__ == "__main__":
-    main(limit=10)
+    main(limit=50)

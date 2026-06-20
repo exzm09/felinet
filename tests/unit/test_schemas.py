@@ -187,7 +187,7 @@ class TestRAGConfig:
         assert config.retrieval.top_k_initial == 30
         assert config.retrieval.top_k_reranked == 5
         assert config.retrieval.use_reranker is True
-        assert config.embedding_model == "all-MiniLM-L6-v2"
+        assert config.embedding_model == "models/felinet-embedding-v1"
         assert config.collection_name == "felinet_chunks"
 
     def test_chunking_config_bounds(self):

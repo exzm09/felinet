@@ -70,7 +70,7 @@ pytest tests/
 - [X] Week 11: Guardrails
 - [X] Week 12: CI/CD quality gates
 - [X] Week 13: Drift detection + monitoring
-- [ ] Week 14: A/B testing + feedback loops
+- [X] Week 14: A/B testing + feedback loops
 - [ ] Week 15: Frontend + deployment
 - [ ] Week 16: Documentation + polish
 

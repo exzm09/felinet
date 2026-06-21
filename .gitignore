@@ -59,3 +59,10 @@ data/monitoring/*.html
 # DeepEval local cache & telemetry
 .deepeval/
 .deepeval_telemetry.txt
+
+# regenerable — ships to the Space, never to git
+data/qdrant_export.parquet
+
+# runtime logs
+data/feedback/
+data/prompt_ab_*.jsonl

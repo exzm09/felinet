@@ -102,6 +102,42 @@ class BM25Index:
         logger.info(f"BM25 index built: {len(chunk_ids)} chunks indexed")
         return cls(bm25, chunk_ids, chunk_texts, chunk_metadata)
 
+    @classmethod
+    def from_parquet(cls, parquet_path: str | Path) -> BM25Index:
+        """
+        Build a BM25 index from the same parquet used for the dense vectors.
+        Both retrieval lanes come from one file -> they can never drift apart.
+        """
+        import json as _json
+
+        import pandas as pd
+
+        path = Path(parquet_path)
+        logger.info(f"Building BM25 index from {path}")
+
+        df = pd.read_parquet(path)
+        chunk_ids, chunk_texts, chunk_metadata = [], [], []
+        for _, row in df.iterrows():
+            payload = _json.loads(row["payload"])
+            cid = payload.get("chunk_id") or str(row["id"])
+            chunk_ids.append(cid)
+            chunk_texts.append(payload["content"])
+            chunk_metadata.append(
+                {
+                    "source": payload.get("source", "unknown"),
+                    "document_id": payload.get("document_id", ""),
+                    "content_type": payload.get("content_type", ""),
+                    "chunk_index": payload.get("chunk_index", 0),
+                    "title": payload.get("title", ""),
+                    "url": payload.get("url"),
+                }
+            )
+
+        tokenized_chunks = [text.lower().split() for text in chunk_texts]
+        bm25 = BM25Okapi(tokenized_chunks)
+        logger.info(f"BM25 index built from parquet: {len(chunk_ids)} chunks indexed")
+        return cls(bm25, chunk_ids, chunk_texts, chunk_metadata)
+
     def search(self, query: str, top_k: int = 30) -> list[dict]:
         """
         Search the BM25 index for chunks matching the query keywords

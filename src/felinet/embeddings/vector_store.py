@@ -6,7 +6,9 @@ Handles collection creation, upserting embedded chunks, and basic search.
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import uuid
 
 from qdrant_client import QdrantClient
@@ -16,13 +18,69 @@ from felinet.schemas import DocumentChunk
 
 logger = logging.getLogger(__name__)
 
+_MEMORY_CLIENT: QdrantClient | None = None
+
 
 def get_client(url: str = "http://localhost:6333") -> QdrantClient:
     """
-    Connect to a running Qdrant instance
+    Return a Qdrant client. QDRANT_MODE env var picks the behavior:
+      unset / "server" -> connect to a running Qdrant at `url`
+      "memory"         -> in-memory Qdrant, loaded once from bundled parquet (HF Space)
+      "cloud"          -> Qdrant Cloud via QDRANT_URL + QDRANT_API_KEY
     """
-    client = QdrantClient(url=url)
-    logger.info(f"Connected to Qdrant at {url}")
+    mode = os.getenv("QDRANT_MODE", "server")
+    if mode == "memory":
+        return _get_memory_client()
+    if mode == "cloud":
+        return QdrantClient(url=os.environ["QDRANT_URL"], api_key=os.environ["QDRANT_API_KEY"])
+    return QdrantClient(url=url)
+
+
+def _get_memory_client() -> QdrantClient:
+    """
+    Build the in-memory DB only on the first call, then hand back the same one.
+    """
+    global _MEMORY_CLIENT
+    if _MEMORY_CLIENT is None:
+        _MEMORY_CLIENT = _build_memory_client()
+    return _MEMORY_CLIENT
+
+
+def _coerce_id(value):
+    """
+    Qdrant point ids must be an int or a UUID string.
+    """
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return str(value)
+
+
+def _build_memory_client() -> QdrantClient:
+    import pandas as pd
+
+    path = os.getenv("QDRANT_EXPORT_PATH", "data/qdrant_export.parquet")
+    collection = os.getenv("QDRANT_COLLECTION", "felinet_chunks")
+
+    df = pd.read_parquet(path)
+    dim = len(df.iloc[0]["vector"])
+
+    client = QdrantClient(":memory:")
+    client.create_collection(
+        collection_name=collection,
+        vectors_config=VectorParams(size=dim, distance=Distance.COSINE),
+    )
+    client.upsert(
+        collection_name=collection,
+        points=[
+            PointStruct(
+                id=_coerce_id(row["id"]),
+                vector=[float(x) for x in row["vector"]],
+                payload=json.loads(row["payload"]),
+            )
+            for _, row in df.iterrows()
+        ],
+    )
     return client
 
 

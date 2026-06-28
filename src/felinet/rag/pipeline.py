@@ -326,7 +326,15 @@ def query_rag(
         )
     else:
         retrieved = retrieve_chunks(query_vector, config, qdrant_url)
-    log_query(query, extra={"corpus_similarity": query_centroid_similarity(query_vector)})
+    # Drift monitoring is part of the server-mode MLOps stack and is skipped
+    # in the embedded/in-memory deployment.
+    extra = {}
+    if os.environ.get("QDRANT_MODE", "server") == "server":
+        try:
+            extra["corpus_similarity"] = query_centroid_similarity(query_vector)
+        except Exception as e:
+            logger.warning(f"Drift similarity skipped: {e}")
+    log_query(query, extra=extra)
 
     # Step 3.5: Rerank is enabled
     if config.retrieval.use_reranker and retrieved:

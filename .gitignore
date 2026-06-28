@@ -69,3 +69,4 @@ data/ab_results/
 data/feedback/
 data/prompt_ab_*.jsonl
 data/ab_logs/
+/data

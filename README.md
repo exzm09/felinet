@@ -2,7 +2,9 @@
 
 A feline health and breed knowledge assistant powered by a deep RAG pipeline with full MLOps infrastructure.
 
-🔗 **[Live demo](https://huggingface.co/spaces/exzm/felinet)** · 📁 **[Source](https://github.com/exzm09/felinet)**
+![FeliNet demo](https://github.com/user-attachments/assets/6bb22a2a-8150-4a50-9c1b-5557d288a3ea)
+
+**[Live demo](https://huggingface.co/spaces/exzm/felinet)** · **[Source](https://github.com/exzm09/felinet)**
 
 ## What is this?
 

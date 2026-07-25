@@ -23,6 +23,7 @@ dependencies = [
     "requests>=2.31,<3.0",
     "beautifulsoup4>=4.12,<5.0",
     "trafilatura>=1.8,<2.0",
+    "tiktoken>=0.12.0",
 
     # Embeddings & vector store
     "sentence-transformers>=3.0,<6.0",

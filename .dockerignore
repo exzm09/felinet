@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.git/
+.github/
+.dvc/
+mlruns/
+qdrant_storage/
+notebooks/
+*.egg-info/
+tests/
+.env
+data/raw/
+data/feedback/
+data/prompt_ab_*.jsonl

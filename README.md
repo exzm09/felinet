@@ -2,6 +2,10 @@
 
 A feline health and breed knowledge assistant powered by a deep RAG pipeline with full MLOps infrastructure.
 
+![FeliNet demo](https://github.com/user-attachments/assets/6bb22a2a-8150-4a50-9c1b-5557d288a3ea)
+
+**[Live demo](https://huggingface.co/spaces/exzm/felinet)** · **[Source](https://github.com/exzm09/felinet)**
+
 ## What is this?
 
 FeliNet is an open-source RAG system built over a curated corpus of veterinary and breed information. It combines:
@@ -12,22 +16,50 @@ FeliNet is an open-source RAG system built over a curated corpus of veterinary a
 - **Guardrailed LLM generation** with source citations
 - **Full MLOps stack**: experiment tracking, data versioning, CI/CD quality gates, observability, and drift detection
 
+## Results
+
+Measured on a held-out 50-case golden set (disease, breed, nutrition, behavior, toxicology).
+
+### Fine-tuning the embeddings was the biggest win
+
+| Retrieval metric | Baseline (all-MiniLM-L6-v2) | Fine-tuned (felinet-v1) | Improvement |
+|---|---|---|---|
+| NDCG@10 | 0.680 | 0.785 | +10.4% |
+| MRR@10 | 0.619 | 0.726 | +10.7% |
+| Accuracy@1 | 0.481 | 0.581 | +10.0 pts |
+| Accuracy@5 | 0.795 | 0.921 | +12.6 pts |
+| Accuracy@10 | 0.869 | 0.962 | +9.3 pts |
+
+### End-to-end quality
+
+| Metric | Value |
+|---|---|
+| Source accuracy | 96.0% |
+| Faithfulness | ~0.90 |
+| Answer relevancy | 0.97–1.00 |
+| Error rate | 0.0% (down from 34% pre-migration) |
+| Avg / P95 latency | 2437 ms / 4773 ms |
+
+## Architecture
+![FeliNet architecture](docs/FeliNet.png)
+
 ## Project structure
 
 ```
 felinet/
--- src/felinet/          # Source code
-|   -- data/             # Ingestion, scraping, ETL
+-- src/felinet/           # Source code
+|   --  data/             # Ingestion, scraping, ETL
 |   --  rag/              # Retrieval, reranking, generation
-|   --  embeddings/       # Fine-tuning, evaluation
+|   --  embeddings/       # Chunking + fine-tuning (index-time)
 |   --  api/              # FastAPI endpoints
-|   -- evaluation/       # DeepEval / RAGAS test suites
-|   --  mlops/            # Drift detection, monitoring
+|   --  evaluation/       # DeepEval / RAGAS test suites
+|   --  experiments/      # A/B testing
+|   --  mlops/            # Experiment-tracking helpers
+|   --  monitoring/       # Drift, alerts, query logging
 |   --  schemas.py        # Pydantic data models
 |-- tests/                # Unit and integration tests
 |-- configs/              # YAML configuration files
 |-- data/                 # DVC-tracked data (not in git)
-|-- notebooks/            # Exploration and analysis
 |-- scripts/              # One-off setup scripts
 |-- docs/                 # Architecture docs and ADRs
 ```
@@ -38,41 +70,20 @@ felinet/
 # Clone and set up
 git clone https://github.com/exzm09/felinet.git
 cd felinet
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 
 # Copy and fill in environment variables
-cp .env.example .env
-
-# Initialize DVC
-dvc init
+copy .env.example .env
 
 # Verify MLflow
 python scripts/init_mlflow.py
 mlflow ui --port 5000
 
 # Run tests
-pytest tests/
+pytest -q -p no:deepeval
 ```
-
-## Current status
-
-- [x] Week 1: Project scaffold, schemas, DVC, MLflow
-- [x] Week 2: Data ingestion pipeline
-- [x] Week 3: ETL with Prefect + data quality
-- [x] Week 4: Chunking + vector store
-- [x] Week 5: End-to-end naive RAG
-- [X] Week 6: Evaluation framework
-- [X] Week 7: Hybrid search
-- [X] Week 8: Reranking + context engineering
-- [X] Week 9: Synthetic training data
-- [X] Week 10: Embedding fine-tuning
-- [X] Week 11: Guardrails
-- [X] Week 12: CI/CD quality gates
-- [X] Week 13: Drift detection + monitoring
-- [X] Week 14: A/B testing + feedback loops
-- [ ] Week 15: Frontend + deployment
-- [ ] Week 16: Documentation + polish
 
 ## Tech stack
 
@@ -82,7 +93,7 @@ pytest tests/
 | Vector store | Qdrant |
 | Hybrid search | rank_bm25 + Qdrant dense + RRF |
 | Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2 |
-| LLM | OenAI (gpt-4o-mini) |
+| LLM | OpenAI (gpt-4o-mini) |
 | API | FastAPI |
 | Frontend | Gradio |
 | Experiment tracking | MLflow |
